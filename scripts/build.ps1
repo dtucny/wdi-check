@@ -4,7 +4,8 @@
 
 .EXAMPLE
   ./scripts/build.ps1
-  Runs the tests, then produces artifacts/WdiCheck-win-x64 (+ .zip) and an unsigned MSIX.
+  Runs the tests, then produces artifacts/WdiCheck-<version>-win-x64 (+ .zip) and
+  artifacts/WdiCheck-<version>-win-x64-unsigned.msix. The version comes from Directory.Build.props.
 
 .EXAMPLE
   ./scripts/build.ps1 -Msix -CertificateThumbprint 0123ABCD...
@@ -35,12 +36,18 @@ function Invoke-Dotnet {
     if ($LASTEXITCODE -ne 0) { throw "dotnet $($args -join ' ') failed with exit code $LASTEXITCODE" }
 }
 
+# Single source of truth: <Version> in Directory.Build.props, as MSBuild evaluates it.
+$version = (& dotnet msbuild $app -getProperty:Version "-p:Platform=$Platform" -nologo | Select-Object -Last 1).Trim()
+if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+') { throw "Could not read the version from MSBuild (got '$version')." }
+$name = "WdiCheck-$version-$rid"
+Write-Host "Building WdiCheck $version ($rid)"
+
 if (-not $SkipTests) {
     Invoke-Dotnet test (Join-Path $root 'tests\WdiCheck.Core.Tests\WdiCheck.Core.Tests.csproj') -c $Configuration --nologo
 }
 
 if ($Unpackaged) {
-    $dir = Join-Path $out "WdiCheck-$rid"
+    $dir = Join-Path $out $name
     if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
     Invoke-Dotnet publish $app -c $Configuration "-p:Platform=$Platform" -r $rid -p:WindowsPackageType=None -o $dir --nologo
     $zip = "$dir.zip"
@@ -57,12 +64,19 @@ if ($Msix) {
     } else {
         '-p:AppxPackageSigningEnabled=false'
     })
+    # MSBuild's own package layout (WdiCheck.App_<version>.0_<arch>_Test\) stays under msix\; the
+    # deliverable is copied next to the other artifacts with a versioned name.
     $msixDir = Join-Path $out 'msix\'
     Invoke-Dotnet build $app -c $Configuration "-p:Platform=$Platform" "-p:RuntimeIdentifier=$rid" `
         -p:WindowsPackageType=MSIX -p:GenerateAppxPackageOnBuild=true -p:AppxBundle=Never `
         "-p:AppxPackageDir=$msixDir" @signing --nologo
-    $pkg = Get-ChildItem $msixDir -Recurse -Filter *.msix | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    Write-Host "MSIX: $($pkg.FullName)"
+    $pkg = Get-ChildItem $msixDir -Recurse -Filter "*_$version.0_$($Platform.ToLowerInvariant()).msix" |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $pkg) { throw "MSBuild produced no MSIX for version $version under $msixDir" }
+    $suffix = if ($CertificateThumbprint) { '' } else { '-unsigned' }
+    $msixFile = Join-Path $out "$name$suffix.msix"   # not $msix: PowerShell names are case-insensitive and -Msix is a switch
+    Copy-Item $pkg.FullName $msixFile -Force
+    Write-Host "MSIX: $msixFile"
     if (-not $CertificateThumbprint) {
         Write-Host 'The MSIX is unsigned. To install it locally, create a dev certificate with scripts/new-dev-cert.ps1 and rebuild with -CertificateThumbprint.'
     }

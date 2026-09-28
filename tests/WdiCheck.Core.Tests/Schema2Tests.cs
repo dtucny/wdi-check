@@ -27,6 +27,9 @@ public class InfMatchingTests
         Inf("u0399879.inf", "31.0.24002.92", [31, 0, 24002, 92], "2024-01-11", "Display", [3], [@"PCI\VEN_1002&DEV_164E"]),
         Inf("u0393743.inf", "31.0.14070.0", [31, 0, 14070, 0], "2023-11-01", "Display", [3], [@"PCI\VEN_1002&DEV_164E"]),
         Inf("u0403049.inf", "32.0.11002.41", [32, 0, 11002, 41], "2024-05-01", "Display", [3], [@"PCI\VEN_1002&DEV_164E"]),
+        Inf("u0199286.inf", "32.0.21043.5001", [32, 0, 21043, 5001], "2026-03-03", "Display", [3], [@"PCI\VEN_1002&DEV_164E"]),
+        // Another INF series binding the same ID on the next line: must not become the display driver's target.
+        Inf("amdxe.inf", "32.9.0.1", [32, 9, 0, 1], "2026-09-01", "Display", [3], [@"PCI\VEN_1002&DEV_164E"]),
         Inf("realtekapo2.inf", "11.0.6000.833", [11, 0, 6000, 833], "2020-11-16", "SoftwareComponent", [1], [@"SWC\VEN_10EC&AID_0011"]),
         Inf("realtekuapo2.inf", "13.6429.2509.904", [13, 6429, 2509, 904], "2026-08-18", "SoftwareComponent", [1], [@"SWC\VEN_10EC&AID_0011"]),
         // Same file name from an unrelated vendor, binding other hardware: must not match by name alone.
@@ -80,9 +83,10 @@ public class InfMatchingTests
     }
 
     [Fact]
-    public void RenamedPerReleaseInfMatchesByHardwareIdOnSameLine()
+    public void RenamedPerReleaseInfFindsNewestBuildListingTheDevice()
     {
-        // AMD names display INFs per release (u0401611.inf is not indexed); same-line releases found via the HWID.
+        // AMD names display INFs per release (u0401611.inf is not indexed). Within the u*.inf series, the newest
+        // build that lists this device is 32.0.21043.5001, not the family water (AMD's 26.x INFs drop RDNA2).
         var gpu = Fixtures.Device("AMD Radeon(TM) Graphics", "31.0.24002.92", "Advanced Micro Devices, Inc.", "oem41.inf",
             [@"PCI\VEN_1002&DEV_164E&SUBSYS_7D731462&REV_CB"], [@"PCI\VEN_1002&DEV_164E&REV_CB", @"PCI\VEN_1002&DEV_164E"],
             original: "u0401611.inf");
@@ -92,9 +96,47 @@ public class InfMatchingTests
 
         Assert.False(r.Inf!.ByName);
         Assert.Equal(MatchConfidence.InfExact, r.Confidence);
-        Assert.Equal(DriverStatus.Current, r.Status);
-        Assert.All(r.Inf.Releases, x => Assert.Equal(31, x.Version.Major));
+        Assert.Equal(DriverStatus.Behind, r.Status);
+        Assert.Equal("32.0.21043.5001", r.Update?.Raw);
+        Assert.DoesNotContain(r.Inf.Releases, x => x.InfName == "amdxe.inf");
     }
+
+    [Fact]
+    public void WithoutAnInfNameOnlyTheSameLineIsUsed()
+    {
+        var gpu = Fixtures.Device("AMD Radeon(TM) Graphics", "31.0.24002.92", "Advanced Micro Devices, Inc.", "oem41.inf",
+            [@"PCI\VEN_1002&DEV_164E"]) with { Class = "Display" };
+
+        var r = Matcher().Match(gpu);
+
+        Assert.Equal(DriverStatus.Current, r.Status);
+        Assert.All(r.Inf!.Releases, x => Assert.Equal(31, x.Version.Major));
+    }
+
+    [Fact]
+    public void InstalledAliasSpellingIsTheSameBuild()
+    {
+        // 2.0.x folds Realtek's two DriverVer stamps into one row; 10.080.0407.2026 is an alias of 10.080.50.0407.
+        var rows = Rows.Where(r => r.InfName != "rt640x64.inf").Append(new InfRow
+        {
+            InfName = "rt640x64.inf", DriverVer = "10.080.50.0407", DriverVerNormalised = [10, 80, 50, 407],
+            DriverVerAliases = ["10.080.0407.2026"], DriverDate = "2026-04-07", Class = "Net", FamilyIds = [87, 88],
+            Hwids = [@"PCI\VEN_10EC&DEV_8125"],
+        });
+        var matcher = new DeviceMatcher(Fixtures.Index(), InfIndex.Build(rows, Fixtures.Artefacts));
+
+        var r = matcher.Match(Fixtures.Rtl8125("10.80.407.2026") with { OriginalInfName = "rt640x64.inf" });
+
+        Assert.Equal(DriverStatus.Current, r.Status);
+        Assert.False(r.IsNewerThanIndex);
+        Assert.Equal(MatchConfidence.InfExact, r.Confidence);
+    }
+
+    [Theory]
+    [InlineData("u0401611.inf", "u.inf")]
+    [InlineData("amdwin-u0202607.inf", "amdwin-u.inf")]
+    [InlineData(null, null)]
+    public void InfSeries(string? name, string? expected) => Assert.Equal(expected, InfIndex.Series(name));
 
     [Fact]
     public void SiblingInfsOnOtherLinesAreNotMixed()
@@ -122,6 +164,31 @@ public class InfMatchingTests
 
         Assert.Null(r.Inf);
         Assert.Equal(DriverStatus.NotIndexed, r.Status);
+    }
+
+    [Fact]
+    public void YearNumberedBuildComparedWithinItsOwnLine()
+    {
+        // 2.0.x routes Lenovo's year-numbered MediaTek listings (25.40.2.586) to Wi-Fi 6E as a parallel line.
+        var families = new[] { new Family { FamilyId = 54, Name = "MediaTek Wi-Fi 6E", Component = "wlan", Hwids = [@"PCI\VEN_14C3&DEV_0616"] } };
+        var water = new[]
+        {
+            new WaterLevel
+            {
+                FamilyId = 54, Family = "MediaTek Wi-Fi 6E", Version = "3.6.2.1427", FirstPublished = "2026-06-10",
+                Lines = [new VersionLineInfo { Major = 3, WaterLine = true }, new VersionLineInfo { Major = 25, ParallelToWater = true }],
+            },
+        };
+        Artefact A(int id, string v, string d) => new() { ArtefactId = id, Vendor = "lenovo", Kind = "driver", FamilyId = 54, VersionRaw = v, ReleaseDate = d, Url = $"https://example.invalid/{v}.exe" };
+        var index = DriverIndex.Build(families, water, [A(1, "3.6.2.1427", "2026-06-10"), A(2, "25.40.2.586", "2026-08-01"), A(3, "25.40.2.579", "2026-05-01")]);
+        var wifi = Fixtures.Device("RZ616 Wi-Fi 6E 160MHz", "25.40.2.579", "MediaTek, Inc.", "oem11.inf",
+            [@"PCI\VEN_14C3&DEV_0616&SUBSYS_E0C617AA"], [@"PCI\VEN_14C3&DEV_0616"], original: "mtkwl6ex.inf");
+
+        var r = new DeviceMatcher(index, InfIndex.Build(Rows, [])).Match(wifi);
+
+        Assert.Equal(DriverStatus.Behind, r.Status);
+        Assert.Equal("25.40.2.586", r.Update?.Raw);
+        Assert.Equal("3.6.2.1427", r.ParallelLine?.Version);
     }
 
     [Theory]

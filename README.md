@@ -96,7 +96,11 @@ src\WdiCheck.App\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\WdiCheck.exe
 ./scripts/build.ps1 -Platform ARM64 -Unpackaged
 ```
 
-**Unpackaged** (`artifacts/WdiCheck-win-x64/`, plus a zip) is self-contained: .NET and the
+Artifact names carry the version from `Directory.Build.props`, for example
+`artifacts/WdiCheck-0.2.1-win-x64.zip` and `artifacts/WdiCheck-0.2.1-win-x64-unsigned.msix`
+(the `-unsigned` suffix is dropped when a certificate is given).
+
+**Unpackaged** (`artifacts/WdiCheck-<version>-win-x64/`, plus a zip) is self-contained: .NET and the
 Windows App SDK are bundled, so it runs by double-clicking `WdiCheck.exe`, with nothing to install.
 
 **MSIX**: Windows only installs signed packages whose signer it trusts. For local testing:
@@ -104,7 +108,7 @@ Windows App SDK are bundled, so it runs by double-clicking `WdiCheck.exe`, with 
 ```powershell
 ./scripts/new-dev-cert.ps1 -Trust          # elevated; creates CN=WdiCheck Dev and trusts it
 ./scripts/build.ps1 -Msix -CertificateThumbprint <thumbprint printed above>
-Add-AppxPackage artifacts\msix\WdiCheck.App_0.2.0.0_x64_Test\WdiCheck.App_0.2.0.0_x64.msix
+Add-AppxPackage artifacts\WdiCheck-0.2.1-win-x64.msix
 ./scripts/new-dev-cert.ps1 -Untrust        # when done
 ```
 
@@ -113,13 +117,39 @@ Studio; it only means no symbols package is produced.
 
 `scripts/generate-assets.ps1` regenerates the icon and logo PNGs.
 
+## Releasing
+
+Pushing a version tag makes GitHub Actions build and publish a release
+([.github/workflows/release.yml](.github/workflows/release.yml)):
+
+1. Set `<Version>` in `Directory.Build.props` and the `Identity` `Version` in
+   `src/WdiCheck.App/Package.appxmanifest` (same version, plus `.0`).
+2. In `CHANGELOG.md`, move the Unreleased notes under `## [x.y.z] - yyyy-mm-dd` and add its compare link.
+3. Commit, then tag and push:
+
+   ```powershell
+   git tag -a v0.2.1 -m "WdiCheck 0.2.1"
+   git push origin main v0.2.1
+   ```
+
+The workflow checks that the tag matches both version numbers. It then runs the tests,
+builds the x64 and ARM64 zips and MSIX packages with `scripts/build.ps1`, and creates the
+GitHub release with that version's `CHANGELOG.md` section as its notes
+(`scripts/release-notes.ps1 -Version x.y.z` previews them). To rebuild an existing release,
+run the workflow manually from the Actions tab with the tag. Tags with a suffix
+(`v0.3.0-beta.1`) are published as pre-releases.
+
+Release packages are currently **unsigned**. Windows SmartScreen may warn about the zip's exe,
+and the MSIX installs only where its signer is trusted.
+
 ## Layout
 
 ```
 src/WdiCheck.Core/         API client + cache, version parsing, family & INF indexes, device & board matching, export
 src/WdiCheck.App/          WinUI 3 app (MVVM, CommunityToolkit.Mvvm)
 tests/WdiCheck.Core.Tests/ xUnit tests (fixtures built from real index rows)
-scripts/                   build, dev certificate, asset generation
+scripts/                   build, release notes, dev certificate, asset generation
+.github/workflows/         release build on version tags
 doc/upstream-requests.md   problems found in WinDriverIndex and suggested API changes
 CHANGELOG.md               release notes
 ```

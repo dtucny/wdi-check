@@ -82,6 +82,9 @@ public sealed class InfRow
     /// <summary>Null for ~250 MSI INFs whose file name was lost on extraction; match those by HWID.</summary>
     public string? InfName { get; init; }
     public string DriverVer { get; init; } = "";
+
+    /// <summary>2.0.x: other DriverVer spellings of the same build; match installed versions against these too.</summary>
+    public List<string>? DriverVerAliases { get; init; }
     public List<long>? DriverVerNormalised { get; init; }
     public string? DriverDate { get; init; }
     public string? Class { get; init; }

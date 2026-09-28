@@ -24,7 +24,15 @@ Items are ordered by how much they would improve a client's accuracy.
 | 11 | Manifest / bundle | `manifest.json` added; bundle declined | **Adopted.** Cached files whose SHA-256 matches skip the request |
 | 12 | Download hints | Added for NVIDIA, AMD, Intel families | **Adopted.** Shown first under "Get the update" and in the export |
 
-### New observations from the 2.0.0 data
+### New observations from the 2.0.0 data (maintainer's second round: all three addressed in data 2.0.x)
+
+> Status: the Realtek spellings are folded into one row with `driver_ver_aliases` (WdiCheck reads
+> them). Lenovo's year-numbered MediaTek builds are routed to Wi-Fi 6E/7 as a parallel 25.x line
+> (WdiCheck compares within that line through the package-level fallback; year-numbered
+> `mtkwl6ex.inf` INF rows await payload crawling). AMD 31.x is no longer marked parallel, and the
+> per-device answer comes from `infs.json`: WdiCheck follows the installed INF's `u*.inf` series
+> to the newest build listing the device.
+
 
 - **Two DriverVer spellings for one build.** `rt640x64.inf` has rows `10.080.0407.2026` and
   `10.080.50.0407`, both dated 2026-04-07. The normalised arrays differ (`[10,80,407,2026]` vs

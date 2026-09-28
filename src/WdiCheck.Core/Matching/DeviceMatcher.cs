@@ -182,7 +182,8 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
 
     private DeviceResult MatchByInf(LocalDevice device, InfMatch inf, List<Candidate> ranked, string? matchedId, bool onCompatible)
     {
-        var installed = DriverVersion.Parse(device.DriverVersion);
+        // An installed alias spelling of a build compares as that build's canonical DriverVer.
+        var installed = inf.Installed?.Version ?? DriverVersion.Parse(device.DriverVersion);
         var newest = inf.Newest;
         var owners = newest.Row.FamilyIds;
 
@@ -202,6 +203,7 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
         var parallel = family is not null && installed.Line is { } line
                        && ParallelLineNote(family, line, null) is { Line: { } wl } note
                        && infs!.HasLineFor(device, wl)
+                       && newest.Version.Line != wl // the update itself is on that line: nothing parallel to mention
             ? note
             : null;
         var parallelText = ParallelText(parallel);

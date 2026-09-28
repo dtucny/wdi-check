@@ -1,0 +1,94 @@
+# Builds and publishes a GitHub release when a version tag is pushed.
+#
+#   1. Set <Version> in Directory.Build.props and the Identity Version in Package.appxmanifest.
+#   2. Move CHANGELOG.md's Unreleased notes under "## [x.y.z] - date".
+#   3. Commit, then: git tag -a vX.Y.Z -m "WdiCheck X.Y.Z" && git push origin main vX.Y.Z
+#
+# Re-running for an existing tag (Actions → Release → Run workflow) rebuilds and replaces the assets.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build, e.g. v0.2.1
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Check the tag matches the project version
+        run: |
+          $version = (dotnet msbuild src/WdiCheck.App/WdiCheck.App.csproj -getProperty:Version -p:Platform=x64 -nologo | Select-Object -Last 1).Trim()
+          if ("v$version" -ne $env:TAG) {
+            throw "Tag $env:TAG does not match <Version>$version</Version> in Directory.Build.props."
+          }
+          $manifest = Get-Content src/WdiCheck.App/Package.appxmanifest -Raw
+          if ($manifest -notmatch "<Identity [^>]*Version=`"$([regex]::Escape($version))\.0`"") {
+            throw "Package.appxmanifest Identity Version is not $version.0."
+          }
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Release notes from CHANGELOG.md
+        run: ./scripts/release-notes.ps1 -Version $env:VERSION -OutFile release-notes.md
+
+      - name: Build x64 (tests, unpackaged zip, MSIX)
+        run: ./scripts/build.ps1 -Platform x64
+
+      - name: Build ARM64 (unpackaged zip, MSIX)
+        run: ./scripts/build.ps1 -Platform ARM64 -SkipTests
+
+      - name: Keep the build as a workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: WdiCheck-${{ env.VERSION }}
+          path: |
+            artifacts/*.zip
+            artifacts/*.msix
+          if-no-files-found: error
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = Get-ChildItem artifacts -File | Where-Object Extension -in '.zip', '.msix' | ForEach-Object FullName
+          if (-not $files) { throw 'No artifacts to publish.' }
+          $files | ForEach-Object { Write-Host "Asset: $_" }
+
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG @files --clobber
+            gh release edit $env:TAG --notes-file release-notes.md
+          } else {
+            $flags = @('--title', "WdiCheck $env:VERSION", '--notes-file', 'release-notes.md', '--verify-tag')
+            if ($env:VERSION -match '-') { $flags += '--prerelease' }
+            gh release create $env:TAG @files @flags
+          }
+          if ($LASTEXITCODE -ne 0) { throw "gh release failed ($LASTEXITCODE)." }

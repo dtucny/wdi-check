@@ -7,6 +7,29 @@ All notable changes to WdiCheck are documented here. The format follows
 WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 (`schema_version` in every file). Each release notes the schema versions it supports.
 
+## [Unreleased]
+
+## [0.2.1] - 2026-09-28
+
+Supports WinDriverIndex data schema 2.0.x, and still reads 1.x mirrors.
+
+### Added
+- Data 2.0.x `infs.json` `driver_ver_aliases`: an installed build under an alternative DriverVer
+  spelling (Realtek's `10.080.0407.2026` for `10.080.50.0407`) matches that build instead of
+  showing as "newer than index".
+- GitHub Actions release workflow: pushing a `vX.Y.Z` tag checks the tag against the project
+  version, runs the tests, builds x64 and ARM64 zips and MSIX packages, and publishes a GitHub
+  release with the version's changelog section as notes (`scripts/release-notes.ps1`).
+
+### Changed
+- INFs renamed per release (AMD display `u*.inf`) are compared across the directly following
+  version line within the installed INF's series (name without digits). A Raphael iGPU on
+  `31.0.24002.92` is now shown behind `32.0.21043.5001`, the newest build that lists the device,
+  rather than current on 31.x or behind a family water level it can't install.
+- The parallel-line note is omitted when the update itself is on the water level's line.
+- Build artifacts carry the version: `WdiCheck-<version>-<rid>` (folder and `.zip`) and
+  `WdiCheck-<version>-<rid>[-unsigned].msix`, read from `Directory.Build.props` through MSBuild.
+
 ## [0.2.0] - 2026-09-28
 
 Supports WinDriverIndex data schema 2.0.0, and still reads 1.x mirrors.
@@ -74,5 +97,7 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/dtucny/wdi-check/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dtucny/wdi-check/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dtucny/wdi-check/releases/tag/v0.1.0

@@ -15,11 +15,18 @@ public sealed class InfRelease
         FirstPublished = FamilyInfo.ParseDate(row.FirstPublished);
         Artefacts = artefacts;
         Hwids = new HashSet<string>(row.Hwids.Select(Hwid.Normalise), StringComparer.Ordinal);
+        Aliases = (row.DriverVerAliases ?? []).Select(DriverVersion.Parse).Where(v => v.IsParsed).ToList();
     }
 
     public InfRow Row { get; }
     public string? InfName => Row.InfName;
     public DriverVersion Version { get; }
+
+    /// <summary>Other DriverVer spellings of the same build (Realtek stamps 10.080.0407.2026 and 10.080.50.0407).</summary>
+    public IReadOnlyList<DriverVersion> Aliases { get; }
+
+    /// <summary>True when <paramref name="v"/> is this build under its canonical DriverVer or any alias.</summary>
+    public bool IsBuild(DriverVersion v) => Version.Equals(v) || Aliases.Any(a => a.Equals(v));
 
     /// <summary>The INF's own DriverVer date — comparable with the date Windows reports for the installed driver.</summary>
     public DateOnly? DriverDate { get; }
@@ -84,7 +91,8 @@ public sealed class InfIndex
     /// The releases this device's driver should be compared with:
     /// every release of its original INF (restricted to those binding one of its IDs, in the installed version's
     /// numbering scheme), plus releases
-    /// of other INFs that bind its most specific indexed ID, are on the same version line and the same
+    /// of other INFs that bind its most specific indexed ID, are on the same version line (or, within the installed
+    /// INF's series, the next line) and the same
     /// device class (vendors that rename the INF per release, e.g. AMD display drivers).
     /// </summary>
     public InfMatch? Match(LocalDevice device)
@@ -115,8 +123,13 @@ public sealed class InfIndex
             var hits = ByHwid(id);
             if (hits.Count == 0)
                 continue;
+            // With the installed INF's series known (AMD renames display INFs every release: u0401611.inf,
+            // u0199286.inf → "u.inf"), the directly following line counts too — that is how a 31.x install learns
+            // which 32.x build its device is listed in. Without it, only the same line is safe.
+            var series = Series(name);
             pool.AddRange(hits.Where(r =>
-                r.Version.Line == line
+                r.Version.Line is { } l
+                && (l == line || (series is not null && series == Series(r.InfName) && line.IsFollowedBy(l)))
                 && ClassMatches(r.Row.Class, device.Class)
                 && !(byName && string.Equals(r.InfName, name, StringComparison.OrdinalIgnoreCase))));
             break;
@@ -127,9 +140,13 @@ public sealed class InfIndex
 
         var releases = pool.Distinct().OrderByDescending(r => r.Version).ThenByDescending(r => r.DriverDate).ToList();
         var newest = releases[0];
-        var installedRelease = releases.FirstOrDefault(r => r.Version.Equals(installed));
+        var installedRelease = releases.FirstOrDefault(r => r.IsBuild(installed));
         return new InfMatch(byName ? name : newest.InfName, byName, releases, newest, installedRelease);
     }
+
+    /// <summary>An INF name's series: lower-case, digits removed (u0401611.inf → u.inf); null when unknown.</summary>
+    internal static string? Series(string? infName) =>
+        string.IsNullOrEmpty(infName) ? null : new string(infName.ToLowerInvariant().Where(c => !char.IsAsciiDigit(c)).ToArray());
 
     /// <summary>True when some INF binding one of the device's IDs has a release on <paramref name="line"/>.</summary>
     public bool HasLineFor(LocalDevice device, VersionLine line) =>
