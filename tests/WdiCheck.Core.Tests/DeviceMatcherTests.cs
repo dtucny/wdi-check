@@ -29,8 +29,8 @@ public class DeviceMatcherTests
         Assert.Equal("10.080.0525.2026", r.LineNewest?.Version.Raw);
         // Installed version first listed 2025-12-10; newest on the 10.x line first listed 2026-09-16.
         Assert.Equal(new DateOnly(2026, 9, 16).DayNumber - new DateOnly(2025, 12, 10).DayNumber, r.LagDays);
-        Assert.Same(r.LineNewest, r.Target);
-        Assert.Same(r.LineNewest, r.Update);
+        Assert.Equal("10.080.0525.2026", r.Target?.Raw);
+        Assert.Equal(r.LineNewest?.Version, r.Update?.Version);
         // The family water level (1125.x, Feb 2026) predates the 10.x line's newest, so no parallel-line note.
         Assert.Null(r.ParallelLine);
     }

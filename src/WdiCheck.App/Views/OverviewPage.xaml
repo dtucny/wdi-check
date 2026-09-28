@@ -48,13 +48,17 @@
                      IsOpen="{x:Bind ViewModel.View.IsStale, Mode=OneWay, FallbackValue=False}"
                      Message="{x:Bind ViewModel.View.StaleText, Mode=OneWay}" />
 
+            <InfoBar Severity="Informational" Title="Data" IsClosable="True"
+                     IsOpen="{x:Bind ViewModel.View.HasSchemaWarning, Mode=OneWay, FallbackValue=False}"
+                     Message="{x:Bind ViewModel.View.SchemaWarning, Mode=OneWay}" />
+
             <StackPanel Spacing="16" Visibility="{x:Bind ViewModel.HasView, Mode=OneWay}">
 
                 <Border Style="{StaticResource CardStyle}">
                     <StackPanel Spacing="4">
                         <TextBlock Text="{x:Bind ViewModel.View.Headline, Mode=OneWay}" Style="{StaticResource SubtitleTextBlockStyle}" TextWrapping="Wrap" />
                         <TextBlock Style="{StaticResource MutedTextStyle}"
-                                   Text="Each installed driver is compared with the newest release on its own version line, across every vendor WinDriverIndex tracks." />
+                                   Text="Each installed driver is compared with the newest release of the same INF file that any vendor WinDriverIndex tracks has published; where the index has no INF data, with the newest release on its version line." />
                     </StackPanel>
                 </Border>
 

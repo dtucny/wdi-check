@@ -24,6 +24,12 @@ public sealed record LocalDevice
     /// <summary>Installed INF name, e.g. <c>oem114.inf</c> (third-party) or <c>stornvme.inf</c> (inbox).</summary>
     public string? InfPath { get; init; }
 
+    /// <summary>
+    /// The INF's name as its vendor shipped it (e.g. <c>rt640x64.inf</c> for <c>oem114.inf</c>) — the key
+    /// infs.json uses. Equal to <see cref="InfPath"/> for in-box drivers; null if it couldn't be resolved.
+    /// </summary>
+    public string? OriginalInfName { get; init; }
+
     /// <summary>True when the driver is one Windows ships in-box rather than a third-party package.</summary>
     public bool IsInboxDriver =>
         (DriverProvider?.Trim().Equals("Microsoft", StringComparison.OrdinalIgnoreCase) ?? false)

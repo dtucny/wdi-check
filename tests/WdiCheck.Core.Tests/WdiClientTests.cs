@@ -61,6 +61,27 @@ public sealed class WdiClientTests : IDisposable
     }
 
     [Fact]
+    public async Task ManifestHashMatchSkipsTheNetworkEvenWhenRevalidating()
+    {
+        _handler.Next = () => Ok(FamiliesJson, "\"v1\"");
+        var client = NewClient();
+        await client.GetFamiliesAsync(true, TestContext.Current.CancellationToken);
+        var sha = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(FamiliesJson)));
+        var manifest = new Manifest { Files = { ["families.json"] = new ManifestFile { Sha256 = sha.ToUpperInvariant() } } };
+
+        var same = await client.GetFamiliesAsync(revalidate: true, TestContext.Current.CancellationToken, manifest);
+        Assert.Equal(FetchSource.Cache, same.Source);
+        Assert.Single(_handler.Requests);
+
+        // A changed hash forces a conditional request even inside max-age.
+        var changed = new Manifest { Files = { ["families.json"] = new ManifestFile { Sha256 = "00" } } };
+        _handler.Next = () => new HttpResponseMessage(HttpStatusCode.NotModified);
+        var r = await client.GetFamiliesAsync(revalidate: false, TestContext.Current.CancellationToken, changed);
+        Assert.Equal(FetchSource.Revalidated, r.Source);
+        Assert.Equal(2, _handler.Requests.Count);
+    }
+
+    [Fact]
     public async Task OfflineFallsBackToStaleCache()
     {
         _handler.Next = () => Ok(FamiliesJson, "\"v1\"");

@@ -26,12 +26,14 @@ public sealed class FamilyInfo
 {
     private readonly Dictionary<DriverVersion, KnownVersion> _byVersion;
     private readonly Dictionary<VersionLine, KnownVersion> _newestPerLine;
+    private readonly Func<string?, string?>? _equiv;
 
-    internal FamilyInfo(Family family, WaterLevel? water, Dictionary<DriverVersion, KnownVersion> versions)
+    internal FamilyInfo(Family family, WaterLevel? water, Dictionary<DriverVersion, KnownVersion> versions, Func<string?, string?>? equiv)
     {
         Family = family;
         Water = water;
-        WaterVersion = water is null ? null : SchemeEquivalence.Effective(family.Name, water.Version);
+        _equiv = equiv;
+        WaterVersion = water is null ? null : Effective(water.Version);
         WaterDate = ParseDate(water?.FirstPublished);
         _byVersion = versions;
         Versions = versions.Values.OrderByDescending(v => v.Version).ThenByDescending(v => v.FirstReleased).ToList();
@@ -67,12 +69,18 @@ public sealed class FamilyInfo
 
     public IReadOnlyCollection<VersionLine> Lines => _newestPerLine.Keys;
 
+    /// <summary>Parse a listing or installed version in this family's canonical scheme.</summary>
+    public DriverVersion Effective(string? raw) => DriverVersion.Parse(_equiv?.Invoke(raw) ?? raw);
+
     public KnownVersion? Find(DriverVersion version) =>
         version.IsParsed && _byVersion.TryGetValue(version, out var kv) ? kv : null;
 
     public bool HasLine(VersionLine line) => _newestPerLine.ContainsKey(line);
 
     public KnownVersion? NewestOnLine(VersionLine line) => _newestPerLine.GetValueOrDefault(line);
+
+    /// <summary>The site's view of a major-version line (schema 2.0.0), or null.</summary>
+    public VersionLineInfo? LineInfo(long major) => Water?.Lines?.FirstOrDefault(l => l.Major == major);
 
     internal static DateOnly? ParseDate(string? s) =>
         DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
@@ -104,16 +112,18 @@ public sealed class DriverIndex
     {
         var familyList = families.ToList();
         var waterById = water.GroupBy(w => w.FamilyId).ToDictionary(g => g.Key, g => g.First());
-        var nameById = familyList.ToDictionary(f => f.FamilyId, f => f.Name);
+        var equivById = familyList.ToDictionary(f => f.FamilyId, SchemeEquivalence.For);
 
         var versionsById = new Dictionary<int, Dictionary<DriverVersion, KnownVersion>>();
         foreach (var a in artefacts)
         {
-            if (a.FamilyId is not { } fid || !nameById.TryGetValue(fid, out var fname))
+            if (a.FamilyId is not { } fid || !equivById.TryGetValue(fid, out var equiv))
                 continue;
             if (a.Kind is not null && !a.Kind.Equals("driver", StringComparison.OrdinalIgnoreCase))
                 continue;
-            var v = SchemeEquivalence.Effective(fname, a.VersionRaw);
+            if (DriverVersion.IsCombined(a.VersionRaw))
+                continue;
+            var v = DriverVersion.Parse(equiv?.Invoke(a.VersionRaw) ?? a.VersionRaw);
             if (!v.IsParsed)
                 continue;
 
@@ -134,7 +144,8 @@ public sealed class DriverIndex
         var byHwid = new Dictionary<string, List<FamilyInfo>>(StringComparer.OrdinalIgnoreCase);
         foreach (var f in familyList)
         {
-            var info = new FamilyInfo(f, waterById.GetValueOrDefault(f.FamilyId), versionsById.GetValueOrDefault(f.FamilyId) ?? new());
+            var info = new FamilyInfo(f, waterById.GetValueOrDefault(f.FamilyId),
+                versionsById.GetValueOrDefault(f.FamilyId) ?? new(), equivById[f.FamilyId]);
             infos[f.FamilyId] = info;
             foreach (var raw in f.Hwids)
             {

@@ -1,6 +1,7 @@
 namespace WdiCheck.Core.Api;
 
-// Wire models for the WinDriverIndex static JSON API (schema 1.0.0).
+// Wire models for the WinDriverIndex static JSON API. Written against schema 2.0.0; every
+// field added in 2.0.0 is optional so a 1.x mirror still loads.
 // Property names map to snake_case via WdiJsonContext.
 
 /// <summary>Envelope every aggregate file is wrapped in.</summary>
@@ -20,6 +21,27 @@ public sealed class Family
     public string? SiliconVendor { get; init; }
     public string? Component { get; init; }
     public List<string> Hwids { get; init; } = [];
+
+    /// <summary>2.0.0: rule translating listing/INF versions to the family's canonical scheme.</summary>
+    public VersionEquivRule? VersionEquiv { get; init; }
+
+    /// <summary>2.0.0: generic driver source for end users, when one exists.</summary>
+    public DownloadHint? DownloadHint { get; init; }
+}
+
+/// <summary><c>replace</c> uses $1-style group references (valid for .NET Match.Result).</summary>
+public sealed class VersionEquivRule
+{
+    public string Pattern { get; init; } = "";
+    public string Replace { get; init; } = "";
+    public string? Flags { get; init; }
+    public string? Note { get; init; }
+}
+
+public sealed class DownloadHint
+{
+    public string Label { get; init; } = "";
+    public string? Url { get; init; }
 }
 
 public sealed class WaterLevel
@@ -32,6 +54,58 @@ public sealed class WaterLevel
     public List<string>? PublishedBy { get; init; }
     public bool UpstreamOnly { get; init; }
     public string? BestVendorVersion { get; init; }
+
+    /// <summary>2.0.0: per major-version line, with the site's parallel-line verdict.</summary>
+    public List<VersionLineInfo>? Lines { get; init; }
+}
+
+public sealed class VersionLineInfo
+{
+    public long Major { get; init; }
+    public string? Newest { get; init; }
+    public List<long>? NewestNormalised { get; init; }
+    public string? NewestDate { get; init; }
+    public string? FirstDate { get; init; }
+    public string? LastDate { get; init; }
+    public bool WaterLine { get; init; }
+
+    /// <summary>
+    /// True when the line was maintained during the same period as the water level's line
+    /// (a genuine parallel branch); false for an older version of the same scheme.
+    /// </summary>
+    public bool ParallelToWater { get; init; }
+}
+
+/// <summary>2.0.0 infs.json: one row per (INF file name, DriverVer).</summary>
+public sealed class InfRow
+{
+    /// <summary>Null for ~250 MSI INFs whose file name was lost on extraction; match those by HWID.</summary>
+    public string? InfName { get; init; }
+    public string DriverVer { get; init; } = "";
+    public List<long>? DriverVerNormalised { get; init; }
+    public string? DriverDate { get; init; }
+    public string? Class { get; init; }
+
+    /// <summary>Every family whose packages carry the INF (not the ownership set).</summary>
+    public List<int> FamilyIds { get; init; } = [];
+    public List<int> ArtefactIds { get; init; } = [];
+
+    /// <summary>HWIDs with SUBSYS/REV removed; devices always report that shorter form too.</summary>
+    public List<string> Hwids { get; init; } = [];
+    public string? FirstPublished { get; init; }
+}
+
+/// <summary>2.0.0 manifest.json: size and hash of every aggregate file.</summary>
+public sealed class Manifest
+{
+    public Dictionary<string, ManifestFile> Files { get; init; } = [];
+    public Dictionary<string, int>? Directories { get; init; }
+}
+
+public sealed class ManifestFile
+{
+    public long Bytes { get; init; }
+    public string? Sha256 { get; init; }
 }
 
 public sealed class Artefact
@@ -60,6 +134,24 @@ public sealed class Board
     public string? ProductType { get; init; }
     public string? ReleaseDate { get; init; }
     public string? SupportUrl { get; init; }
+
+    /// <summary>2.0.0: SMBIOS match keys (Dell, HP, Lenovo, MSI); null where the vendor publishes none.</summary>
+    public BoardSmbios? Smbios { get; init; }
+}
+
+public sealed class BoardSmbios
+{
+    /// <summary>Dell: SMBIOS SKU Number, exact.</summary>
+    public List<string>? SystemSku { get; init; }
+
+    /// <summary>HP: baseboard product (platform ID), exact.</summary>
+    public List<string>? BaseboardProduct { get; init; }
+
+    /// <summary>Lenovo: system product name (MTM) starts with one of these.</summary>
+    public List<string>? SystemProductPrefix { get; init; }
+
+    /// <summary>MSI: baseboard product contains one of these (MS-xxxx). Codes can be shared; check the name too.</summary>
+    public List<string>? BaseboardProductContains { get; init; }
 }
 
 /// <summary>/v1/latest/by-board/{id}.json — not wrapped in a data envelope.</summary>

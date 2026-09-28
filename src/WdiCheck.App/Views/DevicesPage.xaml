@@ -193,10 +193,12 @@
                                                Visibility="{x:Bind vm:Display.ShowText(Selected.InstalledCanonical), Mode=OneWay}" />
                                     <TextBlock Text="{x:Bind Selected.InstalledDate, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" />
                                 </StackPanel>
-                                <TextBlock Grid.Row="1" Text="Newest on its line" Style="{StaticResource MutedTextStyle}" />
+                                <TextBlock Grid.Row="1" Text="Compared with" Style="{StaticResource MutedTextStyle}" />
                                 <StackPanel Grid.Row="1" Grid.Column="1">
                                     <TextBlock Text="{x:Bind Selected.LineNewest, Mode=OneWay}" Style="{StaticResource VersionTextStyle}" />
-                                    <TextBlock Text="{x:Bind Selected.LineNewestDate, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" />
+                                    <TextBlock Style="{StaticResource MutedTextStyle}">
+                                        <Run Text="{x:Bind Selected.LineNewestDate, Mode=OneWay}" /><Run Text=" · " /><Run Text="{x:Bind Selected.NewestSource, Mode=OneWay}" />
+                                    </TextBlock>
                                 </StackPanel>
                                 <TextBlock Grid.Row="2" Text="Family newest" Style="{StaticResource MutedTextStyle}" />
                                 <StackPanel Grid.Row="2" Grid.Column="1">
@@ -214,8 +216,15 @@
                                      IsOpen="{x:Bind Selected.HasParallelNote, Mode=OneWay, FallbackValue=False}"
                                      Message="{x:Bind Selected.ParallelNote, Mode=OneWay}" />
 
-                            <StackPanel Spacing="4" Visibility="{x:Bind Selected.HasLinks, Mode=OneWay}">
+                            <StackPanel Spacing="4" Visibility="{x:Bind Selected.HasUpdateSources, Mode=OneWay}">
                                 <TextBlock Text="Get the update" Style="{StaticResource SectionHeaderStyle}" />
+                                <HyperlinkButton Tag="{x:Bind Selected.HintUrl, Mode=OneWay}" Click="Link_Click" Padding="4,4"
+                                                 Visibility="{x:Bind Selected.HasHint, Mode=OneWay}">
+                                    <StackPanel>
+                                        <TextBlock Text="{x:Bind Selected.HintLabel, Mode=OneWay}" FontWeight="SemiBold" />
+                                        <TextBlock Text="The chip maker's own driver tool or page" Style="{StaticResource MutedTextStyle}" />
+                                    </StackPanel>
+                                </HyperlinkButton>
                                 <TextBlock Style="{StaticResource MutedTextStyle}"
                                            Text="Links go to the listing's own page; WdiCheck never downloads or installs anything. Prefer your board vendor's package where one exists." />
                                 <ItemsRepeater ItemsSource="{x:Bind Selected.Links, Mode=OneWay}">
@@ -232,7 +241,7 @@
                                 </ItemsRepeater>
                             </StackPanel>
 
-                            <Expander Header="Releases on this version line" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                            <Expander Header="Indexed releases of this driver" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                       Visibility="{x:Bind Selected.HasLineVersions, Mode=OneWay}">
                                 <ItemsRepeater ItemsSource="{x:Bind Selected.LineVersions, Mode=OneWay}">
                                     <ItemsRepeater.ItemTemplate>

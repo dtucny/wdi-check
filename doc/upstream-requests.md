@@ -7,22 +7,37 @@ removed once the site changes. Numbers are from the `2026-09-22T15:22:43+00:00` 
 
 Items are ordered by how much they would improve a client's accuracy.
 
-## Status (maintainer reply, schema 2.0.0; not yet deployed as of 2026-09-28)
+## Status (schema 2.0.0, live 2026-09-28; adopted in WdiCheck 0.2.0)
 
-| # | Request | Status | WdiCheck follow-up once 2.0.0 is live |
+| # | Request | Status | WdiCheck |
 |---|---|---|---|
-| 1 | by-hwid last-writer-wins | Fixed (breaking; `known_versions` moved to `by-family/{id}.json`) | None needed; WdiCheck doesn't use by-hwid |
-| 2 | Over-broad HWID sets | Fixed (chip IDs owned by one family; ~5,200 shared HWIDs remain) | Fewer ambiguous matches; ranking logic stays for real sharing |
+| 1 | by-hwid last-writer-wins | Fixed (breaking; `known_versions` moved to `by-family/{id}.json`) | Not affected; WdiCheck doesn't use by-hwid |
+| 2 | Over-broad HWID sets | Fixed (chip IDs owned by one family; ~5,200 shared HWIDs remain) | Fewer ambiguous matches; ranking stays for genuine sharing |
 | 3 | Junk HWIDs | Fixed | Local filter can stay as a safeguard |
 | 4 | Class-code IDs | Fixed (18 truly generic IDs removed) | Local filter can stay |
 | 5 | JSON 404s | Needs a Cloudflare rule; also shorten the 404 TTL | WdiCheck already treats any 404 as "not indexed" |
-| 6 | INF-level versions | Added `infs.json` (per `inf_name` + DriverVer; HWIDs without SUBSYS/REV) | **Main follow-up:** match by installed `InfPath` → original INF name / HWID and compare `driver_ver_normalised`; keep line heuristics as a fallback |
-| 7 | Scheme rules / lines | Added `families.version_equiv`, `water-level.lines` with `parallel_to_water` | Replace hard-coded `SchemeEquivalence` and the successor-line heuristic |
-| 8 | SMBIOS keys | Added for Dell, HP, Lenovo, MSI | Match by `smbios` keys first; names only for Gigabyte/ASUS/ASRock |
+| 6 | INF-level versions | Added `infs.json` (per `inf_name` + DriverVer; HWIDs without SUBSYS/REV) | **Adopted.** Original INF name via SetupAPI; DriverVer compared with the newest release of that INF; package-level matching is the fallback |
+| 7 | Scheme rules / lines | Added `families.version_equiv`, `water-level.lines` with `parallel_to_water` | **Adopted.** Built-in rules kept only for 1.x data; `parallel_to_water` vetoes the successor rule |
+| 8 | SMBIOS keys | Added for Dell, HP, Lenovo, MSI | **Adopted.** Keys first; MSI shared codes resolved by name |
 | 9 | Families without HWIDs | Empty `hwids` is the board-only signal | Show those only on the board page (already the case) |
 | 10 | Consistency | Fixed | Nothing to change (array field isn't bound) |
-| 11 | Manifest / bundle | `manifest.json` added; bundle declined | Revalidate the manifest, re-download files whose sha256 changed |
-| 12 | Download hints | Added for NVIDIA, AMD, Intel families | Show the hint; otherwise the board's `support_url` |
+| 11 | Manifest / bundle | `manifest.json` added; bundle declined | **Adopted.** Cached files whose SHA-256 matches skip the request |
+| 12 | Download hints | Added for NVIDIA, AMD, Intel families | **Adopted.** Shown first under "Get the update" and in the export |
+
+### New observations from the 2.0.0 data
+
+- **Two DriverVer spellings for one build.** `rt640x64.inf` has rows `10.080.0407.2026` and
+  `10.080.50.0407`, both dated 2026-04-07. The normalised arrays differ (`[10,80,407,2026]` vs
+  `[10,80,50,407]`), so the first always sorts as "newest". WdiCheck pools their download links,
+  but if both are the same build, one canonical row (or an alias field) would be cleaner.
+- **Same INF name, different numbering schemes.** `mtkwl6ex.inf` is indexed only in MediaTek's
+  vendor 3.x numbering, while Windows Update ships it as 25.x/26.x. A machine on the WU build
+  (WILLOW: `25.40.2.579`) can't be ordered against the index. Indexing the WU builds of the INF,
+  or marking rows with the source scheme, would let clients compare them.
+- **Parallel AMD display lines.** The index marks AMD 31.x as `parallel_to_water` with 32.x, yet
+  32.x display INFs (for example `u0403049.inf`) bind `PCI\VEN_1002&DEV_164E`, a Raphael iGPU on 31.x.
+  WdiCheck follows the index (current on 31.x, with a note about 32.x). If 32.x is the recommended
+  driver for such devices, a per-device flag would make that explicit.
 
 The original report follows.
 

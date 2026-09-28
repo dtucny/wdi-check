@@ -71,8 +71,9 @@ internal static class Fixtures
     ];
 
     public static LocalDevice Device(string name, string version, string provider, string inf, string[] hardwareIds,
-        string[]? compatibleIds = null, string? driverDate = null) => new()
+        string[]? compatibleIds = null, string? driverDate = null, string? original = null) => new()
     {
+        OriginalInfName = original,
         InstanceId = hardwareIds.FirstOrDefault() + @"\1",
         Name = name,
         HardwareIds = hardwareIds,

@@ -9,3 +9,6 @@ publish/
 TestResults/
 *.pfx
 artifacts/
+
+# Exported reports describe a specific machine
+driver-status-*.json

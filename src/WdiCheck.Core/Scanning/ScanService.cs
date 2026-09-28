@@ -5,7 +5,15 @@ using WdiCheck.Core.Matching;
 
 namespace WdiCheck.Core.Scanning;
 
-public sealed record DataFreshness(string? IndexGenerated, DateTimeOffset FetchedAt, bool IsStale, string? Error, bool UsedNetwork);
+public sealed record DataFreshness(string? IndexGenerated, DateTimeOffset FetchedAt, bool IsStale, string? Error, bool UsedNetwork,
+    string? SchemaVersion = null, bool HasInfData = false)
+{
+    /// <summary>The newest data schema this build understands; a newer major may have breaking changes.</summary>
+    public const int SupportedSchemaMajor = 2;
+
+    public bool IsNewerSchema =>
+        SchemaVersion is { } v && int.TryParse(v.Split('.')[0], out var major) && major > SupportedSchemaMajor;
+}
 
 public sealed record ScanSnapshot
 {
@@ -36,42 +44,62 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
 
     public async Task<ScanSnapshot> RunAsync(bool revalidate, int? boardOverrideId, IProgress<string>? progress, CancellationToken ct)
     {
-        progress?.Report("Downloading WinDriverIndex data…");
-        var familiesTask = client.GetFamiliesAsync(revalidate, ct);
-        var waterTask = client.GetWaterLevelAsync(revalidate, ct);
-        var artefactsTask = client.GetArtefactsAsync(revalidate, ct);
-        var boardsTask = client.GetBoardsAsync(revalidate, ct);
-
         // Device enumeration doesn't depend on the index; overlap it with the downloads.
         var devicesTask = inventory.GetDevicesAsync(ct);
-        var identity = await Task.Run(_identityReader, ct).ConfigureAwait(false);
+        var identityTask = Task.Run(_identityReader, ct);
 
-        await Task.WhenAll(familiesTask, waterTask, artefactsTask, boardsTask).ConfigureAwait(false);
+        progress?.Report("Checking for new WinDriverIndex data…");
+        // Schema 2.0.0: the manifest's hashes tell which cached files are still current, so an unchanged
+        // index costs this one request. Older mirrors have no manifest; files are then revalidated one by one.
+        var manifest = (await TryGetAsync(() => client.GetManifestAsync(revalidate, ct)).ConfigureAwait(false))?.Value.Data;
+
+        progress?.Report("Downloading WinDriverIndex data…");
+        var familiesTask = client.GetFamiliesAsync(revalidate, ct, manifest);
+        var waterTask = client.GetWaterLevelAsync(revalidate, ct, manifest);
+        var artefactsTask = client.GetArtefactsAsync(revalidate, ct, manifest);
+        var boardsTask = client.GetBoardsAsync(revalidate, ct, manifest);
+        var infsTask = TryGetAsync(() => client.GetInfsAsync(revalidate, ct, manifest));
+
+        await Task.WhenAll(familiesTask, waterTask, artefactsTask, boardsTask, infsTask).ConfigureAwait(false);
         var families = familiesTask.Result;
         var water = waterTask.Result;
         var artefacts = artefactsTask.Result;
         var boards = boardsTask.Result;
+        var infs = infsTask.Result;
 
         progress?.Report("Building local index…");
-        var index = await Task.Run(() => DriverIndex.Build(families.Value.Data, water.Value.Data, artefacts.Value.Data, families.Value.Generated), ct)
+        var (index, infIndex) = await Task.Run(() => (
+                DriverIndex.Build(families.Value.Data, water.Value.Data, artefacts.Value.Data, families.Value.Generated),
+                infs is null ? null : InfIndex.Build(infs.Value.Data, artefacts.Value.Data)), ct)
             .ConfigureAwait(false);
 
         progress?.Report("Reading installed drivers…");
         var devices = await devicesTask.ConfigureAwait(false);
+        var identity = await identityTask.ConfigureAwait(false);
 
         progress?.Report("Matching devices…");
-        var results = await Task.Run(() => new DeviceMatcher(index).MatchAll(devices), ct).ConfigureAwait(false);
+        var results = await Task.Run(() => new DeviceMatcher(index, infIndex).MatchAll(devices), ct).ConfigureAwait(false);
 
         progress?.Report("Identifying this machine…");
         var candidates = BoardMatcher.Rank(identity, boards.Value.Data);
 
-        var fetches = new[] { families.Source, water.Source, artefacts.Source, boards.Source };
+        var fetched = new List<(FetchSource Source, DateTimeOffset At, string? Error)>
+        {
+            (families.Source, families.FetchedAt, families.Error),
+            (water.Source, water.FetchedAt, water.Error),
+            (artefacts.Source, artefacts.FetchedAt, artefacts.Error),
+            (boards.Source, boards.FetchedAt, boards.Error),
+        };
+        if (infs is not null)
+            fetched.Add((infs.Source, infs.FetchedAt, infs.Error));
         var freshness = new DataFreshness(
             families.Value.Generated,
-            new[] { families.FetchedAt, water.FetchedAt, artefacts.FetchedAt, boards.FetchedAt }.Min(),
-            fetches.Contains(FetchSource.StaleCache),
-            families.Error ?? water.Error ?? artefacts.Error ?? boards.Error,
-            fetches.Any(s => s is FetchSource.Network or FetchSource.Revalidated));
+            fetched.Min(f => f.At),
+            fetched.Any(f => f.Source == FetchSource.StaleCache),
+            fetched.Select(f => f.Error).FirstOrDefault(e => e is not null),
+            fetched.Any(f => f.Source is FetchSource.Network or FetchSource.Revalidated),
+            families.Value.SchemaVersion,
+            infIndex is { Count: > 0 });
 
         var snapshot = new ScanSnapshot
         {
@@ -90,6 +118,19 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
 
         progress?.Report($"Loading report for {selected.Name}…");
         return await WithBoardAsync(snapshot, selected, overrideBoard is not null, revalidate, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Optional files (added in schema 2.0.0): missing on older mirrors, or unreachable with nothing cached.</summary>
+    private static async Task<FetchResult<T>?> TryGetAsync<T>(Func<Task<FetchResult<T>>> fetch) where T : class
+    {
+        try
+        {
+            return await fetch().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is WdiNotFoundException or HttpRequestException or System.Text.Json.JsonException or IOException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Re-evaluate an existing scan against a different board (user override).</summary>

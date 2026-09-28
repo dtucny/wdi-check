@@ -29,40 +29,55 @@ WdiCheck only reads. It never downloads or installs drivers; links go to the lis
 
 | Status | Meaning |
 |---|---|
-| Current | At or above the newest release on its version line. *Newer than index* if above anything listed. |
-| Behind (≤ 1 yr / > 1 yr) | A newer release exists. Lag = days between your version's first listing (or its driver date) and the newer release. |
-| ≈ | Your exact version isn't in the index; compared with the nearest listed versions on the same line. Treat as a hint. |
-| Not comparable | The device matched a family, but its version is on a line no listing uses — typically a per-component INF version inside a larger package. |
+| Current | At or above the newest indexed release of the same driver. *Newer than index* if above anything listed. |
+| Behind (≤ 1 yr / > 1 yr) | A newer release exists. Lag = days between your driver's date and the newer release's. |
+| ≈ | Package-level fallback only: your exact version isn't in the index, so it was compared with the nearest listed versions on the same line. Treat as a hint. |
+| Not comparable | The device matched a family, but nothing the index lists can be compared with its version. |
 | Windows driver | The device uses a Windows in-box driver; a vendor driver family exists for the hardware. |
 | Not in index | No hardware ID of the device is in the index (most Microsoft/virtual/peripheral devices). |
 
 ### How matching works
 
+**INF level (preferred).** Windows reports each device's INF `DriverVer`, and the index
+publishes every INF release it has seen (`infs.json`, data schema 2.0.0). WdiCheck resolves
+the installed `oemNN.inf` to the vendor's original INF name (for example `rt640x64.inf`)
+through SetupAPI, and compares your DriverVer with the newest release of that INF. Some
+vendors give every release a new INF name (AMD display drivers `u04xxxxx.inf`). For those,
+releases of other INFs that bind the device's hardware ID are included too, restricted to
+the same version line and device class. This is a like-for-like comparison, with no heuristics.
+
+**Package level (fallback)**, used when an INF isn't in the index, or the data source predates schema 2.0.0:
+
 1. Hardware IDs, then compatible IDs, most specific first. Class-level IDs (`PCI\CC_*`,
    `USB\Class_*`) are ignored, because they pair in-box drivers with unrelated vendor families.
-2. The first ID found in `families.json` gives the candidate families. When several families share
-   it (about a quarter of the index's IDs do), the family that lists your exact version wins, then
-   one that lists your version line, then one with a water level, then a silicon-vendor match.
+2. The first ID found in `families.json` gives the candidate families. When several share it,
+   the family that lists your exact version wins, then one that lists your version line, then one
+   with a water level, then a silicon-vendor match.
 3. Versions are compared within a **version line** (leading number + number of parts), because
    vendors publish the same driver in incompatible schemes (package vs INF versions, NDIS 10.x vs
    NetAdapter 1125.x). Two-part marketing versions (NVIDIA `616.92`) form a single line. The family
-   newest also counts when it sits on the directly following line (AMD INF 31.x → 32.x); other
-   lines are shown as a note.
-4. NVIDIA INF versions (`32.0.16.1692`) are translated to the marketing scheme (`616.92`), and
-   ASRock's Realtek UAD versions (`9360.1_UAD`) to `6.0.9360.1`, mirroring the site's rules.
+   newest also counts when it is on the directly following line, unless the index marks your line
+   `parallel_to_water`.
+4. Version-scheme translations (NVIDIA INF → marketing version, Realtek UAD builds) come from the
+   index's `version_equiv` rules.
 5. A numerically higher version released no later than yours is treated as a sibling component or
    branch, not an update.
 
-Known limitation: the index publishes package versions, while Windows reports each INF's own
-version, so multi-INF packages (AMD chipset, Intel chipset/Serial IO) can only be compared
-approximately. See [doc/upstream-requests.md](doc/upstream-requests.md).
+Either way, when the family's newest release is on a genuinely parallel line that this device
+could run (Realtek NDIS 10.x vs NetAdapter 1125.x), the detail pane notes it. It doesn't count
+as an update, because parallel lines can target different Windows versions or driver models.
+
+**Machine identification** uses the index's SMBIOS keys (Dell SKU, HP platform ID, Lenovo MTM,
+MSI board code), and falls back to matching names (Gigabyte, ASUS, ASRock).
 
 ## Data
 
 All data comes from the WinDriverIndex static API (`https://windriverindex.tucny.com/v1/latest/`):
-`families.json`, `water-level.json`, `artefacts.json`, `boards.json` and `by-board/{id}.json`.
-Responses are cached in `%LOCALAPPDATA%\WdiCheck\cache` and revalidated with ETags, so a refresh is
-usually a few "not modified" responses, and the app still works offline from the last copy.
+`manifest.json`, `families.json`, `water-level.json`, `artefacts.json`, `boards.json`,
+`infs.json` and `by-board/{id}.json`. Written against data schema 2.0.0; 1.x mirrors still work
+with package-level matching only. Files are cached in `%LOCALAPPDATA%\WdiCheck\cache`. On
+refresh, the manifest's SHA-256 hashes show which cached files are still current, so an unchanged
+index costs one small request, and the app still works offline from the last copy.
 
 Index data is © WinDriverIndex contributors, licensed [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/).
 "Newest" means the newest version any source has published, not a judgement that it is good.
@@ -89,7 +104,7 @@ Windows App SDK are bundled, so it runs by double-clicking `WdiCheck.exe`, with 
 ```powershell
 ./scripts/new-dev-cert.ps1 -Trust          # elevated; creates CN=WdiCheck Dev and trusts it
 ./scripts/build.ps1 -Msix -CertificateThumbprint <thumbprint printed above>
-Add-AppxPackage artifacts\msix\WdiCheck.App_0.1.0.0_x64_Test\WdiCheck.App_0.1.0.0_x64.msix
+Add-AppxPackage artifacts\msix\WdiCheck.App_0.2.0.0_x64_Test\WdiCheck.App_0.2.0.0_x64.msix
 ./scripts/new-dev-cert.ps1 -Untrust        # when done
 ```
 
@@ -101,9 +116,10 @@ Studio; it only means no symbols package is produced.
 ## Layout
 
 ```
-src/WdiCheck.Core/         API client + cache, version parsing, index, device & board matching, export
+src/WdiCheck.Core/         API client + cache, version parsing, family & INF indexes, device & board matching, export
 src/WdiCheck.App/          WinUI 3 app (MVVM, CommunityToolkit.Mvvm)
 tests/WdiCheck.Core.Tests/ xUnit tests (fixtures built from real index rows)
 scripts/                   build, dev certificate, asset generation
 doc/upstream-requests.md   problems found in WinDriverIndex and suggested API changes
+CHANGELOG.md               release notes
 ```

@@ -8,10 +8,11 @@ namespace WdiCheck.Core.Matching;
 public sealed record BoardCandidate(Board Board, double Score, string Reason);
 
 /// <summary>
-/// Identifies this machine in boards.json from SMBIOS. The index carries no SMBIOS keys
-/// yet (see doc/upstream-requests.md), so matching is per vendor:
-/// DIY motherboards by normalised baseboard product name, Lenovo by machine type,
-/// HP by baseboard platform ID, Dell by system product name.
+/// Identifies this machine in boards.json from SMBIOS. Schema 2.0.0 publishes match keys for
+/// Dell (SKU), HP (platform ID), Lenovo (MTM prefix) and MSI (MS-xxxx code); those are tried first.
+/// Name heuristics cover Gigabyte, ASUS and ASRock (whose SMBIOS product is roughly the model name)
+/// and 1.x data: DIY boards by normalised baseboard product, Lenovo by machine type, HP by platform
+/// ID, Dell by system product name.
 /// </summary>
 public static partial class BoardMatcher
 {
@@ -39,7 +40,7 @@ public static partial class BoardMatcher
         var boardVendor = MapVendor(id.BaseBoardManufacturer);
         var machines = boards.Where(b => !string.Equals(b.ProductType, "graphics-card", StringComparison.OrdinalIgnoreCase)).ToList();
 
-        var results = new List<BoardCandidate>();
+        var results = new List<BoardCandidate>(MatchSmbiosKeys(id, machines));
         // OEM systems first: their identity is the system, not the OEM-specific baseboard.
         switch (systemVendor)
         {
@@ -78,6 +79,32 @@ public static partial class BoardMatcher
         ranked.Count > 0 && ranked[0].Score >= AutoSelectScore && (ranked.Count == 1 || ranked[1].Score < ranked[0].Score)
             ? ranked[0]
             : null;
+
+    private static IEnumerable<BoardCandidate> MatchSmbiosKeys(SystemIdentity id, List<Board> machines)
+    {
+        foreach (var b in machines)
+        {
+            if (b.Smbios is not { } keys)
+                continue;
+            if (Any(keys.SystemSku, k => Eq(id.SystemSku, k)))
+                yield return new BoardCandidate(b, 1.0, $"SMBIOS SKU {id.SystemSku}");
+            else if (Any(keys.BaseboardProduct, k => Eq(id.BaseBoardProduct, k)))
+                yield return new BoardCandidate(b, 1.0, $"SMBIOS baseboard {id.BaseBoardProduct}");
+            else if (Any(keys.SystemProductPrefix, k => id.SystemProductName?.Trim().StartsWith(k, StringComparison.OrdinalIgnoreCase) == true))
+                yield return new BoardCandidate(b, 1.0, $"SMBIOS machine type {id.SystemProductName}");
+            else if (Any(keys.BaseboardProductContains, k => id.BaseBoardProduct?.Contains(k, StringComparison.OrdinalIgnoreCase) == true))
+            {
+                // MSI reuses codes across siblings (MEG X570 ACE and UNIFY are both MS-7C35): let the name decide between them.
+                var name = MatchByName([b], id.BaseBoardProduct, "baseboard product").FirstOrDefault()?.Score ?? 0;
+                yield return new BoardCandidate(b, 0.9 + 0.1 * name,
+                    $"SMBIOS board code {keys.BaseboardProductContains!.First(k => id.BaseBoardProduct!.Contains(k, StringComparison.OrdinalIgnoreCase))}" +
+                    (name >= 0.98 ? " and name" : ""));
+            }
+        }
+
+        static bool Any(List<string>? keys, Func<string, bool> test) => keys is { Count: > 0 } && keys.Any(k => !string.IsNullOrWhiteSpace(k) && test(k.Trim()));
+        static bool Eq(string? a, string b) => a is not null && a.Trim().Equals(b, StringComparison.OrdinalIgnoreCase);
+    }
 
     private static IEnumerable<BoardCandidate> MatchLenovo(SystemIdentity id, List<Board> machines)
     {

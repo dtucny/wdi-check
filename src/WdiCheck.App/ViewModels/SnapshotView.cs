@@ -49,6 +49,11 @@ public sealed class SnapshotView
         var f = s.Freshness;
         FreshnessText = $"Index generated {f.IndexGenerated?[..Math.Min(10, f.IndexGenerated.Length)] ?? "unknown"} · downloaded {Display.DateTime(f.FetchedAt)}";
         IsStale = f.IsStale;
+        SchemaWarning = f.IsNewerSchema
+            ? $"WinDriverIndex now publishes data schema {f.SchemaVersion}; this version of WdiCheck understands up to {DataFreshness.SupportedSchemaMajor}.x. Results may be incomplete — check for a WdiCheck update."
+            : !f.HasInfData
+                ? "This data source has no INF-level data (infs.json), so drivers are compared by package version line only; comparisons are less precise."
+                : "";
         StaleText = f.IsStale ? $"Couldn't reach WinDriverIndex ({f.Error}). Showing the copy downloaded {Display.DateTime(f.FetchedAt)}." : "";
 
         // Board
@@ -121,6 +126,8 @@ public sealed class SnapshotView
     public string FreshnessText { get; }
     public bool IsStale { get; }
     public string StaleText { get; }
+    public string SchemaWarning { get; } = "";
+    public bool HasSchemaWarning => SchemaWarning.Length > 0;
 
     public bool HasBoard { get; }
     public bool HasBoardReport => Snapshot.Board is not null;

@@ -1,27 +1,66 @@
 using System.Text.RegularExpressions;
+using WdiCheck.Core.Api;
 
 namespace WdiCheck.Core.Versions;
 
 /// <summary>
-/// Per-family translations from a listing/INF numbering scheme to the canonical scheme
-/// the family's water level uses. Mirrors <c>SCHEME_EQUIV</c> in WinDriverIndex's
-/// <c>publish.py</c>; the index does not yet publish these rules as data
-/// (see doc/upstream-requests.md), so they are duplicated here.
+/// Per-family translations from a listing/INF numbering scheme to the canonical scheme the
+/// family's water level uses. Schema 2.0.0 publishes these as <c>families.version_equiv</c>;
+/// the built-in rules below mirror them for 1.x data that lacks the field.
 /// </summary>
 public static partial class SchemeEquivalence
 {
     public const string NvidiaGraphics = "NVIDIA Graphics";
     public const string RealtekAudio = "Realtek Audio";
 
-    /// <summary>Canonical form of <paramref name="raw"/> for the family, or null if no rule applies.</summary>
-    public static string? ToCanonical(string familyName, string? raw) => familyName switch
+    /// <summary>The family's translation: its published rule, else the built-in one, else null.</summary>
+    public static Func<string?, string?>? For(Family family) =>
+        family.VersionEquiv is { } rule ? FromRule(rule) : BuiltIn(family.Name);
+
+    /// <summary>Compiles a published rule; an invalid pattern yields no translation rather than an error.</summary>
+    public static Func<string?, string?>? FromRule(VersionEquivRule rule)
     {
-        NvidiaGraphics => NvidiaMarketing(raw),
-        RealtekAudio => RealtekUad(raw),
+        if (string.IsNullOrEmpty(rule.Pattern))
+            return null;
+        Regex rx;
+        try
+        {
+            var options = RegexOptions.CultureInvariant;
+            if (rule.Flags?.Contains('i') == true)
+                options |= RegexOptions.IgnoreCase;
+            rx = new Regex(rule.Pattern, options, TimeSpan.FromMilliseconds(100));
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+
+        // Match.Result keeps only the rewritten text, dropping suffixes the pattern didn't consume ("_WHQL_Nahimic").
+        return raw =>
+        {
+            try
+            {
+                var m = rx.Match((raw ?? "").Trim());
+                return m.Success ? m.Result(rule.Replace) : null;
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return null;
+            }
+        };
+    }
+
+    private static Func<string?, string?>? BuiltIn(string familyName) => familyName switch
+    {
+        NvidiaGraphics => NvidiaMarketing,
+        RealtekAudio => RealtekUad,
         _ => null,
     };
 
-    /// <summary>Parse <paramref name="raw"/> after applying the family's scheme translation.</summary>
+    /// <summary>Canonical form of <paramref name="raw"/> using the built-in rule for the family, or null.</summary>
+    public static string? ToCanonical(string familyName, string? raw) => BuiltIn(familyName)?.Invoke(raw);
+
+    /// <summary>Parse <paramref name="raw"/> after applying the family's built-in scheme translation.</summary>
     public static DriverVersion Effective(string familyName, string? raw) =>
         DriverVersion.Parse(ToCanonical(familyName, raw) ?? raw);
 

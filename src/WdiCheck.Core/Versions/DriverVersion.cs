@@ -69,6 +69,17 @@ public sealed partial class DriverVersion : IComparable<DriverVersion>, IEquatab
         return new DriverVersion(parts, isBeta, raw);
     }
 
+    /// <summary>A version whose numeric form is already known (e.g. infs.json driver_ver_normalised).</summary>
+    public static DriverVersion FromParts(IReadOnlyList<long>? parts, string raw) =>
+        parts is { Count: > 0 } ? new DriverVersion(parts.ToArray(), BetaRegex().IsMatch(raw), raw) : Parse(raw);
+
+    /// <summary>
+    /// True for listings that name several versions ("6.0.9464.1/12.1.6003.5923"); any single parse of
+    /// them is one arbitrary member, so they are not used as comparison targets.
+    /// </summary>
+    public static bool IsCombined(string? raw) =>
+        raw is not null && raw.Contains('/') && DottedRegex().Matches(raw).Count >= 2;
+
     /// <summary>Unparseable versions sort lowest; mixed lengths compare as if zero-padded.</summary>
     public int CompareTo(DriverVersion? other)
     {
@@ -131,4 +142,14 @@ public readonly record struct VersionLine(long Major, int Segments)
     public const long AnyMajor = -1;
 
     public override string ToString() => Major == AnyMajor ? $"{Segments}-part" : $"{Major}.x";
+
+    /// <summary>
+    /// <paramref name="next"/> directly follows this line: same segment count and a major within ~10% above
+    /// (31 → 32, 10 → 11, 5 → 6); not 10 → 1125 or 3 → 25, which are different numbering schemes.
+    /// </summary>
+    public bool IsFollowedBy(VersionLine next) =>
+        next.Segments == Segments && next.Major > Major && next.Major <= Major + Math.Max(1, Major / 10);
+
+    /// <summary>Same line or adjacent lines of one numbering scheme, so versions can be ordered meaningfully.</summary>
+    public bool IsSameScheme(VersionLine other) => other == this || IsFollowedBy(other) || other.IsFollowedBy(this);
 }

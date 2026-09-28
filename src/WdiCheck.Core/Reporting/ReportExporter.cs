@@ -11,8 +11,8 @@ public static class ReportExporter
     private static readonly string[] Columns =
     [
         "device", "class", "status", "confidence", "component", "family", "installed_version", "installed_date",
-        "driver_provider", "inf", "newest_on_line", "newest_on_line_date", "family_newest", "family_newest_date",
-        "lag_days", "matched_id", "instance_id", "download_url",
+        "driver_provider", "inf", "original_inf", "matched_inf", "newest", "newest_date", "family_newest", "family_newest_date",
+        "lag_days", "matched_id", "instance_id", "download_url", "download_hint",
     ];
 
     public static async Task WriteCsvAsync(Stream stream, IEnumerable<DeviceResult> results, CancellationToken ct = default)
@@ -95,14 +95,17 @@ public static class ReportExporter
             Date(r.InstalledDate),
             r.Device.DriverProvider,
             r.Device.InfPath,
-            r.LineNewest?.Version.Raw,
-            Date(r.LineNewest?.FirstReleased),
+            r.Device.OriginalInfName,
+            r.Inf?.InfName,
+            r.Newest?.Raw,
+            Date(r.Newest?.Date),
             family?.Water?.Version,
             Date(family?.WaterDate),
             r.LagDays?.ToString(CultureInfo.InvariantCulture),
             r.MatchedId,
             r.Device.InstanceId,
             target?.Artefacts.Select(a => a.Url).FirstOrDefault(DownloadLinks.IsSafe),
+            r.Status == DriverStatus.Behind ? DownloadLinks.Hint(r)?.Url : null,
         ];
     }
 
