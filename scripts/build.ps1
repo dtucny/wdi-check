@@ -67,9 +67,10 @@ if ($Msix) {
     # MSBuild's own package layout (WdiCheck.App_<version>.0_<arch>_Test\) stays under msix\; the
     # deliverable is copied next to the other artifacts with a versioned name.
     $msixDir = Join-Path $out 'msix\'
-    Invoke-Dotnet build $app -c $Configuration "-p:Platform=$Platform" "-p:RuntimeIdentifier=$rid" `
+    # publish, not build: trimming (PublishTrimmed in Release) only happens on publish, and the package is made from its output.
+    Invoke-Dotnet publish $app -c $Configuration "-p:Platform=$Platform" -r $rid `
         "-p:WindowsPackageType=MSIX" "-p:GenerateAppxPackageOnBuild=true" "-p:AppxBundle=Never" `
-        "-p:AppxPackageDir=$msixDir" @signing --nologo
+        "-p:AppxPackageDir=$msixDir" @signing -o (Join-Path $out "msix-publish\$rid") --nologo
     $pkg = Get-ChildItem $msixDir -Recurse -Filter "*_$version.0_$($Platform.ToLowerInvariant()).msix" |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (-not $pkg) { throw "MSBuild produced no MSIX for version $version under $msixDir" }

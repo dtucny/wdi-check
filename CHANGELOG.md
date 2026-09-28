@@ -9,6 +9,16 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-29
+
+### Changed
+- Release packages are about a third of the size: zip and MSIX 91 MB → 32 MB (231 MB → 82 MB unpacked).
+  - The app references the `Microsoft.WindowsAppSDK.WinUI` component instead of the
+    `Microsoft.WindowsAppSDK` metapackage, which also bundled AI/ML (ONNX Runtime, DirectML),
+    Search and Widgets.
+  - Release publishes are trimmed, and the MSIX is now built with `dotnet publish` so it is
+    trimmed too.
+
 ## [0.2.2] - 2026-09-28
 
 The first published build of the 0.2.1 changes: INF driver-version aliases, AMD per-release INF
@@ -112,7 +122,8 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
-[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/dtucny/wdi-check/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/dtucny/wdi-check/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dtucny/wdi-check/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dtucny/wdi-check/compare/v0.1.0...v0.2.0

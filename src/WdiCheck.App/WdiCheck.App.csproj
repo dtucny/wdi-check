@@ -16,6 +16,12 @@
     <DefaultLanguage>en-US</DefaultLanguage>
   </PropertyGroup>
 
+  <!-- Release publishes are trimmed: 231 MB → ~82 MB unpacked. The app is trim-safe (source-generated JSON,
+       compiled x:Bind, no reflection); the only warnings come from the Windows SDK projection assemblies. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishTrimmed>true</PublishTrimmed>
+  </PropertyGroup>
+
   <!-- `dotnet build` without -p:Platform picks the machine's architecture. -->
   <PropertyGroup Condition="'$(Platform)' == '' or '$(Platform)' == 'AnyCPU'">
     <Platform Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">ARM64</Platform>
@@ -34,7 +40,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <!-- Only the WinUI component (and what it depends on): the Microsoft.WindowsAppSDK metapackage also ships
+         AI/ML (ONNX Runtime, DirectML), Search and Widgets, ~45 MB WdiCheck never uses. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.9" />
+    <!-- WinUI 2.3.9 asks for InteractiveExperiences >= 2.1.8, which isn't on nuget.org; pin the release that is. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.9" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>

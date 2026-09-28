@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="WdiCheck.App.Views.BoardPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -44,15 +44,15 @@
                                 Visibility="{x:Bind ViewModel.View.IsBoardOverride, Mode=OneWay, FallbackValue=Collapsed}" />
                     </StackPanel>
                     <AutoSuggestBox x:Name="BoardSearch" Grid.Row="1" Grid.ColumnSpan="2" MaxWidth="560" HorizontalAlignment="Left"
-                                    PlaceholderText="Not your machine? Search the WinDriverIndex catalogue (e.g. “B650 Tomahawk”)"
-                                    QueryIcon="Find" DisplayMemberPath="Name"
+                                    PlaceholderText="Not your machine? Search the WinDriverIndex catalogue (e.g. â€œB650 Tomahawkâ€)"
+                                    QueryIcon="Find"
                                     TextChanged="BoardSearch_TextChanged" SuggestionChosen="BoardSearch_SuggestionChosen">
                         <AutoSuggestBox.ItemTemplate>
                             <DataTemplate x:DataType="api:Board">
                                 <StackPanel Padding="0,4">
                                     <TextBlock Text="{x:Bind Name}" />
                                     <TextBlock Style="{StaticResource MutedTextStyle}">
-                                        <Run Text="{x:Bind vm:Display.Vendor(Vendor)}" /><Run Text=" · " /><Run Text="{x:Bind ProductType}" /><Run Text=" · " /><Run Text="{x:Bind Chipset}" />
+                                        <Run Text="{x:Bind vm:Display.Vendor(Vendor)}" /><Run Text=" Â· " /><Run Text="{x:Bind ProductType}" /><Run Text=" Â· " /><Run Text="{x:Bind Chipset}" />
                                     </TextBlock>
                                 </StackPanel>
                             </DataTemplate>
