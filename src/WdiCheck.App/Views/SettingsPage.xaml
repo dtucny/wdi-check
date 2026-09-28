@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="WdiCheck.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer>
+        <StackPanel MaxWidth="900" Padding="32,20,32,40" Spacing="16" HorizontalAlignment="Stretch">
+            <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" />
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Appearance" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <RadioButtons x:Name="ThemeButtons" SelectionChanged="Theme_SelectionChanged" MaxColumns="3">
+                        <x:String>Use system setting</x:String>
+                        <x:String>Light</x:String>
+                        <x:String>Dark</x:String>
+                    </RadioButtons>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Data source" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock Style="{StaticResource MutedTextStyle}"
+                               Text="WinDriverIndex publishes static JSON; any mirror of the /v1/latest/ tree works." />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="BaseUrlBox" />
+                        <Button Grid.Column="1" Content="Apply" Click="ApplyUrl_Click" />
+                        <Button Grid.Column="2" Content="Reset" Click="ResetUrl_Click" />
+                    </Grid>
+                    <TextBlock x:Name="UrlError" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Visibility="Collapsed" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Offline cache" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock Style="{StaticResource MutedTextStyle}"
+                               Text="Downloaded index files are kept so the app works offline and refreshes cheaply (the server answers “not modified” when nothing changed)." />
+                    <TextBlock x:Name="CacheText" IsTextSelectionEnabled="True" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Open folder" Click="OpenCache_Click" />
+                        <Button Content="Clear cache" Click="ClearCache_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="About" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock x:Name="VersionText" Style="{StaticResource MutedTextStyle}" />
+                    <TextBlock TextWrapping="Wrap">
+                        <Run Text="WdiCheck compares the drivers installed on this PC with " />
+                        <Hyperlink NavigateUri="https://windriverindex.tucny.com/">WinDriverIndex</Hyperlink>
+                        <Run Text=", an open index of the driver versions published by MSI, Gigabyte, ASRock, ASUS, Lenovo, Dell, HP and upstream sources. Index data is licensed " />
+                        <Hyperlink NavigateUri="https://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</Hyperlink>
+                        <Run Text="." />
+                    </TextBlock>
+                    <TextBlock Style="{StaticResource MutedTextStyle}"
+                               Text="“Latest” means the newest version any source has published, not a judgement that it is good; a vendor may legitimately withhold a driver that regressed. WdiCheck only reads device information and never downloads or installs drivers." />
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <HyperlinkButton Content="WinDriverIndex on GitHub" NavigateUri="https://github.com/dtucny/WinDriverIndex" />
+                        <HyperlinkButton Content="Method &amp; findings" NavigateUri="https://github.com/dtucny/WinDriverIndex/blob/main/doc/findings.md" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

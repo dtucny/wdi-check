@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="WdiCheck.App.Views.StatusPill"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    HorizontalAlignment="Left"
+    VerticalAlignment="Center">
+    <Border x:Name="Root" CornerRadius="10" Padding="8,2,10,3"
+            Background="{ThemeResource SystemFillColorSolidNeutralBackgroundBrush}">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="SeverityStates">
+                <VisualState x:Name="Neutral" />
+                <VisualState x:Name="Good">
+                    <VisualState.Setters>
+                        <Setter Target="Root.Background" Value="{ThemeResource SystemFillColorSuccessBackgroundBrush}" />
+                        <Setter Target="Dot.Fill" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Warning">
+                    <VisualState.Setters>
+                        <Setter Target="Root.Background" Value="{ThemeResource SystemFillColorCautionBackgroundBrush}" />
+                        <Setter Target="Dot.Fill" Value="{ThemeResource SystemFillColorCautionBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Critical">
+                    <VisualState.Setters>
+                        <Setter Target="Root.Background" Value="{ThemeResource SystemFillColorCriticalBackgroundBrush}" />
+                        <Setter Target="Dot.Fill" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+            <Ellipse x:Name="Dot" Width="8" Height="8" VerticalAlignment="Center"
+                     Fill="{ThemeResource SystemFillColorNeutralBrush}" />
+            <TextBlock x:Name="Label" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -1,0 +1,11 @@
+bin/
+obj/
+*.user
+.vs/
+*.msix
+*.appx
+AppPackages/
+publish/
+TestResults/
+*.pfx
+artifacts/

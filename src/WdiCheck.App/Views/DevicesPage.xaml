@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="WdiCheck.App.Views.DevicesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:WdiCheck.App.ViewModels"
+    xmlns:views="using:WdiCheck.App.Views">
+
+    <Page.Resources>
+        <CollectionViewSource x:Name="GroupedRows" IsSourceGrouped="True" />
+
+        <DataTemplate x:Key="WideRowTemplate" x:DataType="vm:DeviceRowViewModel">
+            <Grid Padding="0,8" ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="150" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{x:Bind Subtitle}" Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{x:Bind Installed}" Style="{StaticResource VersionTextStyle}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{x:Bind Newest}" Style="{StaticResource VersionTextStyle}" VerticalAlignment="Center" />
+                <views:StatusPill Grid.Column="3" Text="{x:Bind StatusText}" Severity="{x:Bind Severity}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="NarrowRowTemplate" x:DataType="vm:DeviceRowViewModel">
+            <Grid Padding="0,8" ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                        <Run Text="{x:Bind Installed}" /><Run Text=" → " /><Run Text="{x:Bind Newest}" />
+                    </TextBlock>
+                </StackPanel>
+                <views:StatusPill Grid.Column="1" Text="{x:Bind StatusText}" Severity="{x:Bind Severity}" />
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid x:Name="LayoutRoot" Padding="32,20,32,16" RowSpacing="12">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="1100" />
+                    </VisualState.StateTriggers>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="DetailColumn.Width" Value="0" />
+                        <Setter Target="DetailRow.Height" Value="Auto" />
+                        <Setter Target="DetailPane.(Grid.Column)" Value="0" />
+                        <Setter Target="DetailPane.(Grid.Row)" Value="1" />
+                        <Setter Target="DetailPane.MaxHeight" Value="380" />
+                        <Setter Target="DetailPane.Margin" Value="0,12,0,0" />
+                        <Setter Target="VersionColumns.Visibility" Value="Collapsed" />
+                        <Setter Target="DeviceList.ItemTemplate" Value="{StaticResource NarrowRowTemplate}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="Drivers" Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock Style="{StaticResource MutedTextStyle}"
+                       Text="Installed drivers matched against WinDriverIndex by hardware ID. ≈ marks comparisons against a nearby version on the same line rather than your exact release." />
+        </StackPanel>
+
+        <Grid Grid.Row="1" ColumnSpacing="12" RowSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MaxWidth="360" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <AutoSuggestBox x:Name="SearchBox" PlaceholderText="Search devices, families, versions, hardware IDs"
+                            QueryIcon="Find" TextChanged="SearchBox_TextChanged" />
+            <ComboBox x:Name="FilterBox" Grid.Column="1" MinWidth="220" SelectionChanged="FilterBox_SelectionChanged">
+                <ComboBoxItem Content="All matched drivers" Tag="matched" />
+                <ComboBoxItem Content="Behind" Tag="behind" />
+                <ComboBoxItem Content="Behind (≤ 1 year)" Tag="behind-near" />
+                <ComboBoxItem Content="More than a year behind" Tag="behind-far" />
+                <ComboBoxItem Content="Current" Tag="current" />
+                <ComboBoxItem Content="Not comparable" Tag="notcomparable" />
+                <ComboBoxItem Content="Windows in-box drivers" Tag="inbox" />
+                <ComboBoxItem Content="Not in the index" Tag="notindexed" />
+                <ComboBoxItem Content="Every device" Tag="all" />
+            </ComboBox>
+            <ToggleSwitch Grid.Column="2" OnContent="Showing in-box &amp; unindexed devices" OffContent="Show in-box &amp; unindexed devices"
+                          IsOn="{x:Bind ViewModel.ShowInboxAndUnmatched, Mode=TwoWay}" />
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="DetailColumn" Width="400" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition x:Name="DetailRow" Height="0" />
+            </Grid.RowDefinitions>
+
+            <Border Style="{StaticResource CardStyle}" Padding="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid Padding="16,10,32,8" ColumnSpacing="12" BorderThickness="0,0,0,1"
+                          BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="150" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="DEVICE · FAMILY" Style="{StaticResource ColumnHeaderStyle}" Margin="12,0,0,0" />
+                        <StackPanel x:Name="VersionColumns" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="INSTALLED" Width="150" Style="{StaticResource ColumnHeaderStyle}" />
+                            <TextBlock Text="NEWEST" Width="150" Style="{StaticResource ColumnHeaderStyle}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="STATUS" Style="{StaticResource ColumnHeaderStyle}" />
+                    </Grid>
+
+                    <ListView x:Name="DeviceList" Grid.Row="1" SelectionMode="Single"
+                              ItemsSource="{x:Bind GroupedRows.View, Mode=OneWay}"
+                              ItemTemplate="{StaticResource WideRowTemplate}"
+                              SelectionChanged="DeviceList_SelectionChanged">
+                        <ListView.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate x:DataType="vm:DeviceGroup">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{x:Bind Header}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                            <TextBlock Text="{x:Bind CountText}" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ListView.GroupStyle>
+                    </ListView>
+
+                    <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8"
+                                Visibility="{x:Bind IsEmpty, Mode=OneWay}">
+                        <FontIcon Glyph="&#xE721;" FontSize="28" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                        <TextBlock Text="{x:Bind EmptyText, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border x:Name="DetailPane" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="0">
+                <Grid>
+                    <TextBlock Text="Select a driver to see how it was matched and where to get the update."
+                               Style="{StaticResource MutedTextStyle}" Margin="20" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               TextAlignment="Center" Visibility="{x:Bind vm:Display.Hide(HasSelection), Mode=OneWay}" />
+                    <ScrollViewer Visibility="{x:Bind HasSelection, Mode=OneWay}">
+                        <StackPanel Padding="20,16" Spacing="12">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{x:Bind Selected.Name, Mode=OneWay}" Style="{StaticResource SubtitleTextBlockStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                <TextBlock Text="{x:Bind Selected.Subtitle, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" />
+                            </StackPanel>
+                            <views:StatusPill Text="{x:Bind Selected.StatusText, Mode=OneWay}" Severity="{x:Bind Selected.Severity, Mode=OneWay}" />
+                            <TextBlock Text="{x:Bind Selected.Reason, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+
+                            <Grid ColumnSpacing="12" RowSpacing="10" Visibility="{x:Bind Selected.HasFamily, Mode=OneWay}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Installed" Style="{StaticResource MutedTextStyle}" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{x:Bind Selected.Installed, Mode=OneWay}" Style="{StaticResource VersionTextStyle}" />
+                                    <TextBlock Text="{x:Bind Selected.InstalledCanonical, Mode=OneWay}" Style="{StaticResource MutedTextStyle}"
+                                               Visibility="{x:Bind vm:Display.ShowText(Selected.InstalledCanonical), Mode=OneWay}" />
+                                    <TextBlock Text="{x:Bind Selected.InstalledDate, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" />
+                                </StackPanel>
+                                <TextBlock Grid.Row="1" Text="Newest on its line" Style="{StaticResource MutedTextStyle}" />
+                                <StackPanel Grid.Row="1" Grid.Column="1">
+                                    <TextBlock Text="{x:Bind Selected.LineNewest, Mode=OneWay}" Style="{StaticResource VersionTextStyle}" />
+                                    <TextBlock Text="{x:Bind Selected.LineNewestDate, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" />
+                                </StackPanel>
+                                <TextBlock Grid.Row="2" Text="Family newest" Style="{StaticResource MutedTextStyle}" />
+                                <StackPanel Grid.Row="2" Grid.Column="1">
+                                    <TextBlock Text="{x:Bind Selected.FamilyNewest, Mode=OneWay}" Style="{StaticResource VersionTextStyle}" />
+                                    <TextBlock Style="{StaticResource MutedTextStyle}">
+                                        <Run Text="{x:Bind Selected.FamilyNewestDate, Mode=OneWay}" /><Run Text=" · " /><Run Text="{x:Bind Selected.FamilyNewestSources, Mode=OneWay}" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="{x:Bind Selected.ConfidenceText, Mode=OneWay}" Style="{StaticResource MutedTextStyle}"
+                                       Visibility="{x:Bind vm:Display.ShowText(Selected.ConfidenceText), Mode=OneWay}" />
+
+                            <InfoBar Severity="Informational" IsClosable="False" Title="Different version line"
+                                     IsOpen="{x:Bind Selected.HasParallelNote, Mode=OneWay, FallbackValue=False}"
+                                     Message="{x:Bind Selected.ParallelNote, Mode=OneWay}" />
+
+                            <StackPanel Spacing="4" Visibility="{x:Bind Selected.HasLinks, Mode=OneWay}">
+                                <TextBlock Text="Get the update" Style="{StaticResource SectionHeaderStyle}" />
+                                <TextBlock Style="{StaticResource MutedTextStyle}"
+                                           Text="Links go to the listing's own page; WdiCheck never downloads or installs anything. Prefer your board vendor's package where one exists." />
+                                <ItemsRepeater ItemsSource="{x:Bind Selected.Links, Mode=OneWay}">
+                                    <ItemsRepeater.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:LinkItem">
+                                            <HyperlinkButton Tag="{x:Bind Url}" Click="Link_Click" Padding="4,4" ToolTipService.ToolTip="{x:Bind Url}">
+                                                <StackPanel>
+                                                    <TextBlock Text="{x:Bind Title}" FontWeight="{x:Bind vm:Display.Weight(IsBoardVendor)}" />
+                                                    <TextBlock Text="{x:Bind Detail}" Style="{StaticResource MutedTextStyle}" />
+                                                </StackPanel>
+                                            </HyperlinkButton>
+                                        </DataTemplate>
+                                    </ItemsRepeater.ItemTemplate>
+                                </ItemsRepeater>
+                            </StackPanel>
+
+                            <Expander Header="Releases on this version line" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                      Visibility="{x:Bind Selected.HasLineVersions, Mode=OneWay}">
+                                <ItemsRepeater ItemsSource="{x:Bind Selected.LineVersions, Mode=OneWay}">
+                                    <ItemsRepeater.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:KnownVersionItem">
+                                            <Grid ColumnSpacing="8" Padding="0,3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{x:Bind Version}" Style="{StaticResource VersionTextStyle}" FontWeight="{x:Bind vm:Display.Weight(IsInstalled)}" />
+                                                    <TextBlock Text="{x:Bind Sources}" Style="{StaticResource MutedTextStyle}" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{x:Bind Date}" Style="{StaticResource MutedTextStyle}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsRepeater.ItemTemplate>
+                                </ItemsRepeater>
+                            </Expander>
+
+                            <Expander Header="Driver details" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                <Grid ColumnSpacing="12" RowSpacing="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Provider" Style="{StaticResource MutedTextStyle}" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Selected.Provider, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                    <TextBlock Grid.Row="1" Text="INF" Style="{StaticResource MutedTextStyle}" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind Selected.Inf, Mode=OneWay}" IsTextSelectionEnabled="True" />
+                                    <TextBlock Grid.Row="2" Text="Driver date" Style="{StaticResource MutedTextStyle}" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind Selected.DriverDate, Mode=OneWay}" />
+                                    <TextBlock Grid.Row="3" Text="Class" Style="{StaticResource MutedTextStyle}" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind Selected.ClassName, Mode=OneWay}" />
+                                    <TextBlock Grid.Row="4" Text="Also matches" Style="{StaticResource MutedTextStyle}"
+                                               Visibility="{x:Bind Selected.HasOtherFamilies, Mode=OneWay}" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{x:Bind Selected.OtherFamilies, Mode=OneWay}" TextWrapping="Wrap"
+                                               Visibility="{x:Bind Selected.HasOtherFamilies, Mode=OneWay}" />
+                                </Grid>
+                            </Expander>
+
+                            <Expander Header="Hardware IDs" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Style="{StaticResource MutedTextStyle}" Text="The ID that matched the index is shown in bold." />
+                                    <ItemsRepeater ItemsSource="{x:Bind Selected.Ids, Mode=OneWay}">
+                                        <ItemsRepeater.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:HwidItem">
+                                                <TextBlock Text="{x:Bind Id}" Style="{StaticResource VersionTextStyle}" FontSize="12" TextWrapping="Wrap"
+                                                           FontWeight="{x:Bind vm:Display.Weight(IsMatch)}" ToolTipService.ToolTip="{x:Bind Kind}" />
+                                            </DataTemplate>
+                                        </ItemsRepeater.ItemTemplate>
+                                    </ItemsRepeater>
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>
