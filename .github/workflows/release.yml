@@ -46,7 +46,7 @@ jobs:
 
       - name: Check the tag matches the project version
         run: |
-          $version = (dotnet msbuild src/WdiCheck.App/WdiCheck.App.csproj -getProperty:Version -p:Platform=x64 -nologo | Select-Object -Last 1).Trim()
+          $version = (dotnet msbuild src/WdiCheck.App/WdiCheck.App.csproj "-getProperty:Version" "-p:Platform=x64" -nologo | Select-Object -Last 1).Trim()
           if ("v$version" -ne $env:TAG) {
             throw "Tag $env:TAG does not match <Version>$version</Version> in Directory.Build.props."
           }

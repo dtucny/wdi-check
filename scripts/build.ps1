@@ -37,7 +37,7 @@ function Invoke-Dotnet {
 }
 
 # Single source of truth: <Version> in Directory.Build.props, as MSBuild evaluates it.
-$version = (& dotnet msbuild $app -getProperty:Version "-p:Platform=$Platform" -nologo | Select-Object -Last 1).Trim()
+$version = (& dotnet msbuild $app "-getProperty:Version" "-p:Platform=$Platform" -nologo | Select-Object -Last 1).Trim()
 if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+') { throw "Could not read the version from MSBuild (got '$version')." }
 $name = "WdiCheck-$version-$rid"
 Write-Host "Building WdiCheck $version ($rid)"
@@ -49,7 +49,7 @@ if (-not $SkipTests) {
 if ($Unpackaged) {
     $dir = Join-Path $out $name
     if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
-    Invoke-Dotnet publish $app -c $Configuration "-p:Platform=$Platform" -r $rid -p:WindowsPackageType=None -o $dir --nologo
+    Invoke-Dotnet publish $app -c $Configuration "-p:Platform=$Platform" -r $rid "-p:WindowsPackageType=None" -o $dir --nologo
     $zip = "$dir.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }
     Compress-Archive -Path (Join-Path $dir '*') -DestinationPath $zip
@@ -68,7 +68,7 @@ if ($Msix) {
     # deliverable is copied next to the other artifacts with a versioned name.
     $msixDir = Join-Path $out 'msix\'
     Invoke-Dotnet build $app -c $Configuration "-p:Platform=$Platform" "-p:RuntimeIdentifier=$rid" `
-        -p:WindowsPackageType=MSIX -p:GenerateAppxPackageOnBuild=true -p:AppxBundle=Never `
+        "-p:WindowsPackageType=MSIX" "-p:GenerateAppxPackageOnBuild=true" "-p:AppxBundle=Never" `
         "-p:AppxPackageDir=$msixDir" @signing --nologo
     $pkg = Get-ChildItem $msixDir -Recurse -Filter "*_$version.0_$($Platform.ToLowerInvariant()).msix" |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1

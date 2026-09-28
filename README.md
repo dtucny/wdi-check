@@ -11,6 +11,8 @@ support listing for it, including BIOS currency.
 
 WdiCheck only reads. It never downloads or installs drivers; links go to the listing's own page.
 
+![WdiCheck overview: driver status counts, the identified motherboard with its BIOS status, and the drivers that need attention](doc/images/overview.png)
+
 ## What you see
 
 - **Overview** – counts by status, the identified machine with its BIOS status, and the drivers
@@ -24,6 +26,19 @@ WdiCheck only reads. It never downloads or installs drivers; links go to the lis
   status on AMD boards. If automatic matching is wrong or ambiguous, search the catalogue and pick
   your model (remembered).
 - **Settings** – theme, data source (any mirror of `/v1/latest/`), offline cache, attribution.
+
+### Screenshots
+
+**Drivers**: each device with its installed and newest version. The detail pane shows how the
+driver was matched (here, the installed `rt640x64.inf`), the release it's compared with, a note
+about the parallel NetAdapter line, and where to get the update.
+
+![Drivers page with the Realtek 2.5GbE controller selected: installed 10.79.50.1003, newest 10.080.0407.2026, 186 days behind](doc/images/drivers.png)
+
+**This PC's board**: the machine identified from its SMBIOS board code, BIOS currency, and the
+vendor's driver listing next to what's installed.
+
+![Board page for an MSI MPG B650I EDGE WIFI: BIOS 73 days behind, and the vendor's per-family driver listing with an Installed here column](doc/images/board.png)
 
 ### Statuses
 
@@ -97,7 +112,7 @@ src\WdiCheck.App\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\WdiCheck.exe
 ```
 
 Artifact names carry the version from `Directory.Build.props`, for example
-`artifacts/WdiCheck-0.2.1-win-x64.zip` and `artifacts/WdiCheck-0.2.1-win-x64-unsigned.msix`
+`artifacts/WdiCheck-0.2.2-win-x64.zip` and `artifacts/WdiCheck-0.2.2-win-x64-unsigned.msix`
 (the `-unsigned` suffix is dropped when a certificate is given).
 
 **Unpackaged** (`artifacts/WdiCheck-<version>-win-x64/`, plus a zip) is self-contained: .NET and the
@@ -108,7 +123,7 @@ Windows App SDK are bundled, so it runs by double-clicking `WdiCheck.exe`, with 
 ```powershell
 ./scripts/new-dev-cert.ps1 -Trust          # elevated; creates CN=WdiCheck Dev and trusts it
 ./scripts/build.ps1 -Msix -CertificateThumbprint <thumbprint printed above>
-Add-AppxPackage artifacts\WdiCheck-0.2.1-win-x64.msix
+Add-AppxPackage artifacts\WdiCheck-0.2.2-win-x64.msix
 ./scripts/new-dev-cert.ps1 -Untrust        # when done
 ```
 
@@ -128,8 +143,8 @@ Pushing a version tag makes GitHub Actions build and publish a release
 3. Commit, then tag and push:
 
    ```powershell
-   git tag -a v0.2.1 -m "WdiCheck 0.2.1"
-   git push origin main v0.2.1
+   git tag -a v0.2.2 -m "WdiCheck 0.2.2"
+   git push origin main v0.2.2
    ```
 
 The workflow checks that the tag matches both version numbers. It then runs the tests,

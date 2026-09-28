@@ -87,17 +87,17 @@ public static partial class BoardMatcher
             if (b.Smbios is not { } keys)
                 continue;
             if (Any(keys.SystemSku, k => Eq(id.SystemSku, k)))
-                yield return new BoardCandidate(b, 1.0, $"SMBIOS SKU {id.SystemSku}");
+                yield return new BoardCandidate(b, 1.0, $"SKU {id.SystemSku}");
             else if (Any(keys.BaseboardProduct, k => Eq(id.BaseBoardProduct, k)))
-                yield return new BoardCandidate(b, 1.0, $"SMBIOS baseboard {id.BaseBoardProduct}");
+                yield return new BoardCandidate(b, 1.0, $"baseboard product {id.BaseBoardProduct}");
             else if (Any(keys.SystemProductPrefix, k => id.SystemProductName?.Trim().StartsWith(k, StringComparison.OrdinalIgnoreCase) == true))
-                yield return new BoardCandidate(b, 1.0, $"SMBIOS machine type {id.SystemProductName}");
+                yield return new BoardCandidate(b, 1.0, $"machine type {id.SystemProductName}");
             else if (Any(keys.BaseboardProductContains, k => id.BaseBoardProduct?.Contains(k, StringComparison.OrdinalIgnoreCase) == true))
             {
                 // MSI reuses codes across siblings (MEG X570 ACE and UNIFY are both MS-7C35): let the name decide between them.
                 var name = MatchByName([b], id.BaseBoardProduct, "baseboard product").FirstOrDefault()?.Score ?? 0;
                 yield return new BoardCandidate(b, 0.9 + 0.1 * name,
-                    $"SMBIOS board code {keys.BaseboardProductContains!.First(k => id.BaseBoardProduct!.Contains(k, StringComparison.OrdinalIgnoreCase))}" +
+                    $"board code {keys.BaseboardProductContains!.First(k => id.BaseBoardProduct!.Contains(k, StringComparison.OrdinalIgnoreCase))}" +
                     (name >= 0.98 ? " and name" : ""));
             }
         }

@@ -9,7 +9,22 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
-## [0.2.1] - 2026-09-28
+## [0.2.2] - 2026-09-28
+
+The first published build of the 0.2.1 changes: INF driver-version aliases, AMD per-release INF
+series matching, versioned artifacts and the release workflow (see 0.2.1 below). Also:
+
+### Added
+- Screenshots in the README.
+
+### Fixed
+- The release build failed on GitHub's runner: PowerShell 7 splits unquoted `-p:Name=Value`
+  arguments, so MSBuild saw a second project. All MSBuild property arguments are now quoted.
+- The board page read "Matched from SMBIOS SMBIOS board code …".
+
+## [0.2.1] - 2026-09-28 [not published]
+
+Tagged, but the release build failed (see 0.2.2), so no packages were published. 0.2.2 includes everything below.
 
 Supports WinDriverIndex data schema 2.0.x, and still reads 1.x mirrors.
 
@@ -97,7 +112,8 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
-[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/dtucny/wdi-check/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dtucny/wdi-check/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dtucny/wdi-check/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dtucny/wdi-check/releases/tag/v0.1.0
