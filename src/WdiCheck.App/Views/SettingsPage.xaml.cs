@@ -16,6 +16,7 @@ public sealed partial class SettingsPage : Page
         InitializeComponent();
         ThemeButtons.SelectedIndex = Math.Max(0, Array.IndexOf(Themes, ViewModel.Settings.Theme));
         BaseUrlBox.Text = ViewModel.Client.BaseUri.AbsoluteUri;
+        WindowsUpdateToggle.IsOn = ViewModel.Settings.CheckWindowsUpdate;
         VersionText.Text = $"WdiCheck {typeof(App).Assembly.GetName().Version?.ToString(3)}";
         UpdateCacheText();
         _loading = false;
@@ -30,6 +31,14 @@ public sealed partial class SettingsPage : Page
         ViewModel.Settings.Theme = Themes[ThemeButtons.SelectedIndex];
         ViewModel.TrySaveSettings();
         App.Window.ApplyTheme(ViewModel.Settings.Theme);
+    }
+
+    private void WindowsUpdateToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading)
+            return;
+        ViewModel.Settings.CheckWindowsUpdate = WindowsUpdateToggle.IsOn;
+        ViewModel.TrySaveSettings();
     }
 
     private void ApplyUrl_Click(object sender, RoutedEventArgs e)

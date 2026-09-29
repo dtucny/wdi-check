@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using WdiCheck.Core.Inventory;
 using WdiCheck.Core.Matching;
+using WdiCheck.Core.WindowsUpdate;
 
 namespace WdiCheck.Core.Reporting;
 
@@ -12,22 +13,24 @@ public static class ReportExporter
     [
         "device", "class", "status", "confidence", "component", "family", "installed_version", "installed_date",
         "driver_provider", "inf", "original_inf", "matched_inf", "newest", "newest_date", "family_newest", "family_newest_date",
-        "lag_days", "matched_id", "instance_id", "download_url", "download_hint",
+        "lag_days", "matched_id", "instance_id", "download_url", "download_hint", "windows_update_offer", "windows_update_date",
     ];
 
-    public static async Task WriteCsvAsync(Stream stream, IEnumerable<DeviceResult> results, CancellationToken ct = default)
+    public static async Task WriteCsvAsync(Stream stream, IEnumerable<DeviceResult> results, CancellationToken ct = default,
+        IReadOnlyList<WindowsUpdateOffer>? windowsUpdate = null)
     {
         await using var w = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), leaveOpen: true);
         await w.WriteLineAsync(string.Join(',', Columns)).ConfigureAwait(false);
         foreach (var r in results)
         {
             ct.ThrowIfCancellationRequested();
-            await w.WriteLineAsync(string.Join(',', Row(r).Select(Csv))).ConfigureAwait(false);
+            await w.WriteLineAsync(string.Join(',', Row(r, windowsUpdate).Select(Csv))).ConfigureAwait(false);
         }
     }
 
     public static async Task WriteJsonAsync(Stream stream, IEnumerable<DeviceResult> results, SystemIdentity? identity,
-        BoardAssessment? board, string? indexGenerated, CancellationToken ct = default)
+        BoardAssessment? board, string? indexGenerated, CancellationToken ct = default,
+        IReadOnlyList<WindowsUpdateOffer>? windowsUpdate = null)
     {
         await using var w = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
         w.WriteStartObject();
@@ -57,12 +60,32 @@ public static class ReportExporter
             w.WriteEndObject();
         }
 
+        if (windowsUpdate is not null)
+        {
+            // Everything Windows Update offers this machine, including offers no detected device matched.
+            w.WriteStartArray("windows_update_offers");
+            foreach (var o in windowsUpdate)
+            {
+                w.WriteStartObject();
+                w.WriteString("title", o.Title);
+                w.WriteString("version", o.Version?.Raw);
+                w.WriteString("driver_date", o.DriverDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                w.WriteString("hardware_id", o.HardwareId);
+                w.WriteString("class", o.DriverClass);
+                w.WriteString("provider", o.Provider);
+                w.WriteBoolean("optional", o.BrowseOnly);
+                w.WriteEndObject();
+            }
+
+            w.WriteEndArray();
+        }
+
         w.WriteStartArray("devices");
         foreach (var r in results)
         {
             ct.ThrowIfCancellationRequested();
             w.WriteStartObject();
-            var row = Row(r);
+            var row = Row(r, windowsUpdate);
             for (var i = 0; i < Columns.Length; i++)
             {
                 if (Columns[i] == "lag_days" && r.LagDays is { } lag)
@@ -79,8 +102,9 @@ public static class ReportExporter
         await w.FlushAsync(ct).ConfigureAwait(false);
     }
 
-    private static string?[] Row(DeviceResult r)
+    private static string?[] Row(DeviceResult r, IReadOnlyList<WindowsUpdateOffer>? windowsUpdate)
     {
+        var offer = windowsUpdate?.FirstOrDefault(o => o.AppliesTo(r.Device));
         var family = r.Family;
         var target = r.Target;
         return
@@ -106,6 +130,8 @@ public static class ReportExporter
             r.Device.InstanceId,
             target?.Artefacts.Select(a => a.Url).FirstOrDefault(DownloadLinks.IsSafe),
             r.Status == DriverStatus.Behind ? DownloadLinks.Hint(r)?.Url : null,
+            offer?.Version?.Raw ?? (offer is null ? null : offer.Title),
+            Date(offer?.DriverDate),
         ];
     }
 

@@ -21,6 +21,16 @@
 
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="8">
+                    <TextBlock Text="Windows Update" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock Style="{StaticResource MutedTextStyle}"
+                               Text="After each check, ask Windows Update which drivers it offers this exact PC, as Settings › Windows Update › Optional updates would. It contacts Microsoft's update servers, takes up to a minute, and installs nothing." />
+                    <ToggleSwitch x:Name="WindowsUpdateToggle" OnContent="Check Windows Update for driver offers" OffContent="Don't check Windows Update"
+                                  Toggled="WindowsUpdateToggle_Toggled" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="8">
                     <TextBlock Text="Data source" Style="{StaticResource BodyStrongTextBlockStyle}" />
                     <TextBlock Style="{StaticResource MutedTextStyle}"
                                Text="WinDriverIndex publishes static JSON; any mirror of the /v1/latest/ tree works." />

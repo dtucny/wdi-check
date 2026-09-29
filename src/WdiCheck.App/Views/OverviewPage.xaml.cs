@@ -38,4 +38,6 @@ public sealed partial class OverviewPage : Page
     }
 
     private void Board_Click(object sender, RoutedEventArgs e) => App.Window.NavigateTo("board");
+
+    private async void OpenOptionalUpdates_Click(object sender, RoutedEventArgs e) => await MainViewModel.OpenOptionalUpdatesAsync();
 }

@@ -13,12 +13,13 @@ public sealed record BoardFamilyItem(
 /// <summary>Everything the pages display, computed once per scan (or board change).</summary>
 public sealed class SnapshotView
 {
-    public SnapshotView(ScanSnapshot s)
+    public SnapshotView(ScanSnapshot s, WindowsUpdateInfo? windowsUpdate = null)
     {
         Snapshot = s;
+        WindowsUpdate = windowsUpdate ?? WindowsUpdateInfo.Off;
         var boardVendor = s.SelectedBoard?.Vendor;
         Rows = s.Results
-            .Select(r => new DeviceRowViewModel(r, boardVendor))
+            .Select(r => new DeviceRowViewModel(r, boardVendor, WindowsUpdate))
             .OrderBy(r => r.SortKey)
             .ThenByDescending(r => r.Result.LagDays ?? 0)
             .ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
@@ -141,6 +142,38 @@ public sealed class SnapshotView
     }
 
     public ScanSnapshot Snapshot { get; }
+
+    public WindowsUpdateInfo WindowsUpdate { get; }
+
+    public bool ShowWindowsUpdate => WindowsUpdate.Status != WindowsUpdateStatus.Off;
+
+    public bool IsSearchingWindowsUpdate => WindowsUpdate.Status == WindowsUpdateStatus.Searching;
+
+    public bool HasWindowsUpdateOffers => WindowsUpdate.Offers.Count > 0;
+
+    /// <summary>One line on the Overview: what Windows Update offers this exact machine.</summary>
+    public string WindowsUpdateText => WindowsUpdate.Status switch
+    {
+        WindowsUpdateStatus.Searching => "Checking Windows Update for drivers it offers this PC…",
+        WindowsUpdateStatus.Done when WindowsUpdate.Offers.Count == 0 =>
+            "Windows Update offers no driver updates for this PC. Newer builds listed below come from other vendors' or models' packages, which Windows Update doesn't target at this machine.",
+        WindowsUpdateStatus.Done => WindowsUpdate.Offers.Count == 1
+            ? "Windows Update offers 1 driver update for this PC."
+            : $"Windows Update offers {WindowsUpdate.Offers.Count} driver updates for this PC.",
+        WindowsUpdateStatus.Failed => $"Couldn't check Windows Update: {WindowsUpdate.Result?.Error}",
+        _ => "",
+    };
+
+    public Severity WindowsUpdateSeverity => WindowsUpdate.Status switch
+    {
+        WindowsUpdateStatus.Done => WindowsUpdate.Offers.Count == 0 ? Severity.Good : Severity.Warning,
+        _ => Severity.Neutral,
+    };
+
+    /// <summary>Each offer as "Title (date)", optional updates marked.</summary>
+    public IReadOnlyList<string> WindowsUpdateOfferLines => WindowsUpdate.Offers
+        .Select(o => o.Title + (o.DriverDate is { } d ? $" ({Display.Date(d)})" : "") + (o.BrowseOnly ? " · optional update" : ""))
+        .ToList();
     public IReadOnlyList<DeviceRowViewModel> Rows { get; }
     public IReadOnlyList<SummaryTile> Tiles { get; }
     public IReadOnlyList<DeviceRowViewModel> Attention { get; }

@@ -82,6 +82,13 @@ Either way, when the family's newest release is on a genuinely parallel line tha
 could run (Realtek NDIS 10.x vs NetAdapter 1125.x), the detail pane notes it. It doesn't count
 as an update, because parallel lines can target different Windows versions or driver models.
 
+**Windows Update.** After each check, WdiCheck also asks Windows Update which drivers it offers
+this exact machine, as Settings › Windows Update › Optional updates would. WinDriverIndex answers
+"what's the newest build anywhere"; Windows Update answers "what will Microsoft give this PC", using
+its own targeting. When the index finds a newer build but Windows Update offers nothing, the newer
+build has to come from a vendor's page. The search takes 10–60 seconds in the background, needs no
+elevation, installs nothing, and can be turned off in Settings.
+
 **Machine identification** uses the index's SMBIOS keys (Dell SKU, HP platform ID, Lenovo MTM,
 MSI board code), and falls back to matching names (Gigabyte, ASUS, ASRock).
 
@@ -112,7 +119,7 @@ src\WdiCheck.App\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\WdiCheck.exe
 ```
 
 Artifact names carry the version from `Directory.Build.props`, for example
-`artifacts/WdiCheck-0.2.4-win-x64.zip` and `artifacts/WdiCheck-0.2.4-win-x64-unsigned.msix`
+`artifacts/WdiCheck-0.2.5-win-x64.zip` and `artifacts/WdiCheck-0.2.5-win-x64-unsigned.msix`
 (the `-unsigned` suffix is dropped when a certificate is given).
 
 Release builds are trimmed and include only the WinUI part of the Windows App SDK, so each
@@ -126,7 +133,7 @@ Windows App SDK are bundled, so it runs by double-clicking `WdiCheck.exe`, with 
 ```powershell
 ./scripts/new-dev-cert.ps1 -Trust          # elevated; creates CN=WdiCheck Dev and trusts it
 ./scripts/build.ps1 -Msix -CertificateThumbprint <thumbprint printed above>
-Add-AppxPackage artifacts\WdiCheck-0.2.4-win-x64.msix
+Add-AppxPackage artifacts\WdiCheck-0.2.5-win-x64.msix
 ./scripts/new-dev-cert.ps1 -Untrust        # when done
 ```
 
@@ -146,8 +153,8 @@ Pushing a version tag makes GitHub Actions build and publish a release
 3. Commit, then tag and push:
 
    ```powershell
-   git tag -a v0.2.4 -m "WdiCheck 0.2.4"
-   git push origin main v0.2.4
+   git tag -a v0.2.5 -m "WdiCheck 0.2.5"
+   git push origin main v0.2.5
    ```
 
 The workflow checks that the tag matches both version numbers. It then runs the tests,

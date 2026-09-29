@@ -156,6 +156,8 @@ public sealed partial class DevicesPage : Page, INotifyPropertyChanged
         VersionColumns.Visibility = columns ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    private async void OpenOptionalUpdates_Click(object sender, RoutedEventArgs e) => await MainViewModel.OpenOptionalUpdatesAsync();
+
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

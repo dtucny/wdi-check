@@ -211,6 +211,13 @@
                             <TextBlock Text="{x:Bind Selected.ConfidenceText, Mode=OneWay}" Style="{StaticResource MutedTextStyle}"
                                        Visibility="{x:Bind vm:Display.ShowText(Selected.ConfidenceText), Mode=OneWay}" />
 
+                            <StackPanel Spacing="2" Visibility="{x:Bind Selected.HasWindowsUpdateText, Mode=OneWay, FallbackValue=Collapsed}">
+                                <TextBlock Text="Windows Update" Style="{StaticResource ColumnHeaderStyle}" />
+                                <TextBlock Text="{x:Bind Selected.WindowsUpdateText, Mode=OneWay}" TextWrapping="Wrap" />
+                                <HyperlinkButton Content="Open optional updates" Click="OpenOptionalUpdates_Click" Padding="0,2"
+                                                 Visibility="{x:Bind Selected.HasWindowsUpdateOffer, Mode=OneWay, FallbackValue=Collapsed}" />
+                            </StackPanel>
+
                             <InfoBar Severity="Informational" IsClosable="False" Title="Different version line"
                                      IsOpen="{x:Bind Selected.HasParallelNote, Mode=OneWay, FallbackValue=False}"
                                      Message="{x:Bind Selected.ParallelNote, Mode=OneWay}" />

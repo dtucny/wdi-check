@@ -16,6 +16,9 @@ public sealed class AppSettings
 
     public bool ShowInboxAndUnmatched { get; set; }
 
+    /// <summary>Ask Windows Update which drivers it offers this machine after each scan.</summary>
+    public bool CheckWindowsUpdate { get; set; } = true;
+
     /// <summary>"Default", "Light" or "Dark".</summary>
     public string Theme { get; set; } = "Default";
 

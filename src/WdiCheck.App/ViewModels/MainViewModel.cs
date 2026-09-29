@@ -5,6 +5,7 @@ using WdiCheck.Core.Inventory;
 using WdiCheck.Core.Reporting;
 using WdiCheck.Core.Scanning;
 using WdiCheck.Core.Settings;
+using WdiCheck.Core.WindowsUpdate;
 using Windows.Storage.Pickers;
 
 namespace WdiCheck.App.ViewModels;
@@ -12,8 +13,10 @@ namespace WdiCheck.App.ViewModels;
 public sealed partial class MainViewModel : ObservableObject
 {
     private readonly HttpClient _http = WdiClient.CreateHttpClient();
+    private readonly IWindowsUpdateDriverSource _windowsUpdateSource = new WindowsUpdateDrivers();
     private ScanService _scan;
     private CancellationTokenSource? _cts;
+    private WindowsUpdateInfo _windowsUpdate = WindowsUpdateInfo.Off;
 
     public MainViewModel(AppSettings settings)
     {
@@ -89,7 +92,10 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var snapshot = await Task.Run(() => _scan.RunAsync(revalidate, Settings.BoardOverrideId, progress, ct), ct);
-            View = new SnapshotView(snapshot);
+            _windowsUpdate = Settings.CheckWindowsUpdate ? WindowsUpdateInfo.Searching : WindowsUpdateInfo.Off;
+            View = new SnapshotView(snapshot, _windowsUpdate);
+            if (Settings.CheckWindowsUpdate)
+                _ = SearchWindowsUpdateAsync(ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -113,6 +119,23 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Asks Windows Update which drivers it offers this machine. It's slow (seconds to a minute), so it runs after the
+    /// scan and the results are merged into the view when they arrive; a newer scan cancels an older search.
+    /// </summary>
+    private async Task SearchWindowsUpdateAsync(CancellationToken ct)
+    {
+        var result = await Task.Run(() => _windowsUpdateSource.SearchAsync(ct), ct).ConfigureAwait(true);
+        if (ct.IsCancellationRequested || View is null)
+            return;
+        _windowsUpdate = WindowsUpdateInfo.From(result);
+        View = new SnapshotView(View.Snapshot, _windowsUpdate);
+    }
+
+    /// <summary>Opens Settings › Windows Update › Optional updates, where Windows lists offered drivers.</summary>
+    public static Task OpenOptionalUpdatesAsync() =>
+        Windows.System.Launcher.LaunchUriAsync(new Uri("ms-settings:windowsupdate-optionalupdates")).AsTask();
+
     /// <summary>Use a specific catalogue entry for this PC (persisted), or null to go back to automatic matching.</summary>
     public async Task SelectBoardAsync(Board? board)
     {
@@ -134,7 +157,7 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var updated = await Task.Run(() => _scan.WithBoardAsync(snapshot, board, isOverride, revalidate: false, CancellationToken.None));
-            View = new SnapshotView(updated);
+            View = new SnapshotView(updated, _windowsUpdate);
         }
         finally
         {
@@ -175,9 +198,11 @@ public sealed partial class MainViewModel : ObservableObject
             await using var stream = await file.OpenStreamForWriteAsync();
             stream.SetLength(0);
             if (json)
-                await ReportExporter.WriteJsonAsync(stream, snapshot.Results, snapshot.Identity, snapshot.Board, snapshot.Freshness.IndexGenerated);
+                await ReportExporter.WriteJsonAsync(stream, snapshot.Results, snapshot.Identity, snapshot.Board, snapshot.Freshness.IndexGenerated,
+                    windowsUpdate: _windowsUpdate.Status == WindowsUpdateStatus.Done ? _windowsUpdate.Offers : null);
             else
-                await ReportExporter.WriteCsvAsync(stream, snapshot.Results);
+                await ReportExporter.WriteCsvAsync(stream, snapshot.Results,
+                    windowsUpdate: _windowsUpdate.Status == WindowsUpdateStatus.Done ? _windowsUpdate.Offers : null);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

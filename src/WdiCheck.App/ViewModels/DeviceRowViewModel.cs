@@ -12,7 +12,7 @@ public sealed record LinkItem(string Title, string Detail, string Url, bool IsBo
 /// <summary>One row in the Drivers list, plus everything the detail pane shows.</summary>
 public sealed class DeviceRowViewModel
 {
-    public DeviceRowViewModel(DeviceResult r, string? boardVendor)
+    public DeviceRowViewModel(DeviceResult r, string? boardVendor, WindowsUpdateInfo? windowsUpdate = null)
     {
         Result = r;
         var d = r.Device;
@@ -107,6 +107,23 @@ public sealed class DeviceRowViewModel
                 .ToList()
             : [];
 
+        // What Windows Update offers this exact device: machine-targeted, unlike "newest anywhere".
+        var wu = windowsUpdate ?? WindowsUpdateInfo.Off;
+        var offer = wu.OfferFor(d);
+        HasWindowsUpdateOffer = offer is not null;
+        WindowsUpdateText = wu.Status switch
+        {
+            WindowsUpdateStatus.Searching when r.Status != DriverStatus.NotIndexed => "Checking Windows Update…",
+            WindowsUpdateStatus.Done when offer is not null =>
+                $"Windows Update offers {offer.Version?.Raw ?? offer.Title}" +
+                (offer.DriverDate is { } od ? $" (dated {Display.Date(od)})" : "") +
+                (offer.BrowseOnly ? " as an optional update." : "."),
+            WindowsUpdateStatus.Done when r.Status is DriverStatus.Behind =>
+                "Windows Update offers no driver for this device: the newer build isn't targeted at this machine through Windows Update. Get it from the vendor.",
+            WindowsUpdateStatus.Done when r.Status is not DriverStatus.NotIndexed => "Windows Update offers no driver for this device.",
+            _ => "",
+        };
+
         SortKey = r.Status switch
         {
             DriverStatus.Behind => 0,
@@ -158,6 +175,13 @@ public sealed class DeviceRowViewModel
 
     public bool HasHint => HintUrl.Length > 0;
     public bool HasLinks => Links.Count > 0;
+
+    /// <summary>What Windows Update offers this device, or that it offers nothing (empty while off or not run).</summary>
+    public string WindowsUpdateText { get; } = "";
+
+    public bool HasWindowsUpdateText => WindowsUpdateText.Length > 0;
+
+    public bool HasWindowsUpdateOffer { get; }
     public bool HasUpdateSources => HasLinks || HasHint;
     public bool HasParallelNote => ParallelNote.Length > 0;
     public bool HasLineVersions => LineVersions.Count > 0;

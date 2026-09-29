@@ -81,6 +81,40 @@
                     </ItemsRepeater.ItemTemplate>
                 </ItemsRepeater>
 
+                <Border Style="{StaticResource CardStyle}" Visibility="{x:Bind ViewModel.View.ShowWindowsUpdate, Mode=OneWay, FallbackValue=Collapsed}">
+                    <Grid ColumnSpacing="16" RowSpacing="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Windows Update" Style="{StaticResource ColumnHeaderStyle}" />
+                            <!-- A Grid, not a horizontal StackPanel: the text must get a finite width to wrap. -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ProgressRing IsActive="{x:Bind ViewModel.View.IsSearchingWindowsUpdate, Mode=OneWay, FallbackValue=False}"
+                                              Visibility="{x:Bind ViewModel.View.IsSearchingWindowsUpdate, Mode=OneWay, FallbackValue=Collapsed}"
+                                              Width="18" Height="18" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.View.WindowsUpdateText, Mode=OneWay}" TextWrapping="Wrap" />
+                            </Grid>
+                            <ItemsRepeater ItemsSource="{x:Bind ViewModel.View.WindowsUpdateOfferLines, Mode=OneWay}">
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Text="{x:Bind}" Style="{StaticResource MutedTextStyle}" Margin="0,2,0,0" />
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                            <TextBlock Style="{StaticResource MutedTextStyle}"
+                                       Text="What Windows Update offers this exact machine, using Microsoft's own targeting. It's the authoritative answer for drivers Windows Update supplies." />
+                        </StackPanel>
+                        <Button Grid.Column="1" VerticalAlignment="Top" Content="Open optional updates" Click="OpenOptionalUpdates_Click"
+                                Visibility="{x:Bind ViewModel.View.HasWindowsUpdateOffers, Mode=OneWay, FallbackValue=Collapsed}" />
+                    </Grid>
+                </Border>
+
                 <Border Style="{StaticResource CardStyle}">
                     <Grid ColumnSpacing="16" RowSpacing="8">
                         <Grid.ColumnDefinitions>

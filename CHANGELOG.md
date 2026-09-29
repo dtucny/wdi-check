@@ -9,6 +9,21 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-09-29
+
+### Added
+- **What Windows Update offers this PC.** After each check, WdiCheck asks the Windows Update
+  Agent which drivers it offers this exact machine (`Microsoft.Update.Session`, searching
+  `IsInstalled=0 and Type='Driver'` against Windows Update). Unlike a Catalog search, this applies
+  Microsoft's machine-specific targeting. It's shown on the Overview, with a link to Optional
+  updates, and per device in the detail pane. Where WdiCheck finds a newer build but Windows Update
+  offers nothing, the detail pane says the build isn't targeted at this machine. Offers are also
+  in the CSV/JSON export.
+  - The search runs in the background (typically 10–60 s), needs no elevation and installs nothing.
+  - It uses a separate Windows PowerShell process, so a stuck search can be abandoned; it gives up
+    after 3 minutes.
+  - It can be turned off in Settings.
+
 ## [0.2.4] - 2026-09-29
 
 ### Added
@@ -157,7 +172,8 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
-[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/dtucny/wdi-check/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/dtucny/wdi-check/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/dtucny/wdi-check/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/dtucny/wdi-check/compare/v0.2.1...v0.2.2
