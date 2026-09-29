@@ -312,9 +312,11 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
         var parallel = successor is null ? ParallelLineNote(family, line, lineNewest) : null;
         var parallelText = ParallelText(parallel);
 
-        // A higher version released no later than the installed one is almost always a sibling
-        // component or parallel branch (AMD GPIO 2.2.x vs 2.9.x), not a successor.
-        if (update is not null && lag is not 0)
+        // A higher version released no later than the installed one is usually a sibling component or parallel
+        // branch (AMD GPIO 2.2.x vs 2.9.x), not a successor. A later build of the same release (26.40.2.228 vs
+        // 26.40.3.65) is an update even when one vendor happened to list the older build later.
+        var sibling = update is not null && lag is 0 && !SameRelease(installed, update.Version);
+        if (update is not null && !sibling)
         {
             var approx = confidence == MatchConfidence.SameLine
                 ? " Your exact version isn't listed, so this comparison is approximate."
@@ -334,7 +336,7 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
                 Newest = VersionRef.From(update),
                 Update = VersionRef.From(update),
                 InstalledDate = installedDate,
-                LagDays = lag,
+                LagDays = lag is > 0 ? lag : null, // 0 only when listing dates disagree with version order
                 ParallelLine = parallel,
                 Reason = why + (update == successor
                     ? $"{update.Version.Raw} is the newest {family.Name} release, on the version line after yours ({update.Version.Line})."
@@ -383,6 +385,10 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
     }
 
     internal static bool IsSuccessorLine(VersionLine from, VersionLine to) => from.IsFollowedBy(to);
+
+    /// <summary>Same first two version numbers: builds of one release rather than separate components.</summary>
+    internal static bool SameRelease(DriverVersion a, DriverVersion b) =>
+        a.Parts is { Count: >= 2 } p && b.Parts is { Count: >= 2 } q && p[0] == q[0] && p[1] == q[1];
 
     /// <summary>
     /// A note about the family's water level on another line. With schema 2.0.0 line data, only lines the index

@@ -139,6 +139,19 @@ public class InfMatchingTests
     public void InfSeries(string? name, string? expected) => Assert.Equal(expected, InfIndex.Series(name));
 
     [Fact]
+    public void AnotherOemsInfForTheSameChipIsNotTheTarget()
+    {
+        // WILLOW: Lenovo's hdxacplv.inf 6.0.9857.1 was compared with MSI's hdxacpmsi.inf 6.0.10007.1 via the shared chip ID.
+        var rows = Rows.Append(Inf("hdxacpmsi.inf", "6.0.10007.1", [6, 0, 10007, 1], "2026-06-23", "MEDIA", [1],
+            [@"HDAUDIO\FUNC_01&VEN_10EC&DEV_0287"]));
+        var matcher = new DeviceMatcher(Fixtures.Index(), InfIndex.Build(rows, Fixtures.Artefacts));
+        var audio = Fixtures.Device("Realtek(R) Audio", "6.0.9857.1", "Realtek Semiconductor Corp.", "oem31.inf",
+            [@"HDAUDIO\FUNC_01&VEN_10EC&DEV_0287&SUBSYS_17AA3C92&REV_1000"], original: "hdxacplv.inf") with { Class = "MEDIA" };
+
+        Assert.Null(matcher.Match(audio).Inf);
+    }
+
+    [Fact]
     public void SiblingInfsOnOtherLinesAreNotMixed()
     {
         // realtekapo2 (11.x) and realtekuapo2 (13.x) bind the same SWC ID; the installed INF decides.
@@ -320,6 +333,14 @@ public class Schema2DataTests
         Assert.Equal("31.0.24028.1001", r.Update?.Raw);
         Assert.Equal("32.0.31041.1004", r.ParallelLine?.Version);
     }
+
+    [Theory]
+    [InlineData("2026-09-28T04:59:43+00:00", "2026-09-29T01:28:50+00:00", true)]
+    [InlineData("2026-09-29T01:28:50+00:00", "2026-09-28T04:59:43+00:00", false)]
+    [InlineData("2026-09-29T01:28:50+00:00", "2026-09-29T01:28:50+00:00", false)]
+    [InlineData(null, "2026-09-29T01:28:50+00:00", false)]
+    public void CachedBoardReportOlderThanIndexIsRechecked(string? report, string? index, bool expected) =>
+        Assert.Equal(expected, ScanService.IsOlder(report, index));
 
     [Theory]
     [InlineData("2.0.0", false)]

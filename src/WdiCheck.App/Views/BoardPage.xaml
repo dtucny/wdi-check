@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="WdiCheck.App.Views.BoardPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -44,7 +44,7 @@
                                 Visibility="{x:Bind ViewModel.View.IsBoardOverride, Mode=OneWay, FallbackValue=Collapsed}" />
                     </StackPanel>
                     <AutoSuggestBox x:Name="BoardSearch" Grid.Row="1" Grid.ColumnSpan="2" MaxWidth="560" HorizontalAlignment="Left"
-                                    PlaceholderText="Not your machine? Search the WinDriverIndex catalogue (e.g. â€œB650 Tomahawkâ€)"
+                                    PlaceholderText="Not your machine? Search the WinDriverIndex catalogue (e.g. “B650 Tomahawk”)"
                                     QueryIcon="Find"
                                     TextChanged="BoardSearch_TextChanged" SuggestionChosen="BoardSearch_SuggestionChosen">
                         <AutoSuggestBox.ItemTemplate>
@@ -52,7 +52,7 @@
                                 <StackPanel Padding="0,4">
                                     <TextBlock Text="{x:Bind Name}" />
                                     <TextBlock Style="{StaticResource MutedTextStyle}">
-                                        <Run Text="{x:Bind vm:Display.Vendor(Vendor)}" /><Run Text=" Â· " /><Run Text="{x:Bind ProductType}" /><Run Text=" Â· " /><Run Text="{x:Bind Chipset}" />
+                                        <Run Text="{x:Bind vm:Display.Vendor(Vendor)}" /><Run Text=" · " /><Run Text="{x:Bind ProductType}" /><Run Text=" · " /><Run Text="{x:Bind Chipset}" />
                                     </TextBlock>
                                 </StackPanel>
                             </DataTemplate>
@@ -107,11 +107,22 @@
                                 <views:StatusPill Text="{x:Bind ViewModel.View.BiosPill, Mode=OneWay}" Severity="{x:Bind ViewModel.View.BiosSeverity, Mode=OneWay}" />
                             </StackPanel>
                             <TextBlock Grid.Row="1" Text="Vendor's newest BIOS" Style="{StaticResource MutedTextStyle}" />
-                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.View.VendorBiosText, Mode=OneWay}" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.View.VendorBiosText, Mode=OneWay}" Style="{StaticResource VersionTextStyle}" />
                             <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{x:Bind ViewModel.View.AgesaText, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" />
                         </Grid>
+                        <TextBlock Text="{x:Bind ViewModel.View.BiosNote, Mode=OneWay}" TextWrapping="Wrap"
+                                   Visibility="{x:Bind ViewModel.View.HasBiosNote, Mode=OneWay, FallbackValue=Collapsed}" />
+                        <StackPanel Spacing="2" Visibility="{x:Bind ViewModel.View.HasBiosUpdateLink, Mode=OneWay, FallbackValue=Collapsed}">
+                            <TextBlock Text="Get the update" Style="{StaticResource SectionHeaderStyle}" />
+                            <HyperlinkButton NavigateUri="{x:Bind ViewModel.View.SupportUrl, Mode=OneWay}" Padding="4,4">
+                                <StackPanel>
+                                    <TextBlock Text="{x:Bind ViewModel.View.BiosUpdateLinkText, Mode=OneWay}" FontWeight="SemiBold" />
+                                    <TextBlock Text="BIOS downloads are on the vendor's support page for this model" Style="{StaticResource MutedTextStyle}" />
+                                </StackPanel>
+                            </HyperlinkButton>
+                        </StackPanel>
                         <TextBlock Style="{StaticResource MutedTextStyle}"
-                                   Text="BIOS status compares the installed BIOS release date with the newest BIOS the vendor lists. Update BIOS only from the vendor's support page and follow its instructions." />
+                                   Text="BIOS status compares your BIOS version with the newest version the vendor lists; where the index has no version, it compares your BIOS's build date with the vendor's publish date. Update BIOS only from the vendor's support page and follow its instructions." />
                     </StackPanel>
                 </Border>
 
@@ -121,14 +132,16 @@
                     <TextBlock Style="{StaticResource MutedTextStyle}"
                                Text="What the vendor's support page offers per driver family, the newest release anywhere, and what is installed on this PC. The lag is how far the vendor's listing trails the newest release." />
                     <Border Style="{StaticResource CardStyle}" Padding="0">
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Auto" VerticalScrollMode="Disabled">
-                            <StackPanel>
+                        <ScrollViewer x:Name="FamilyTableScroller" HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Auto"
+                                      VerticalScrollMode="Disabled" SizeChanged="FamilyTableScroller_SizeChanged">
+                            <!-- Width follows the card (code-behind) so the columns fill it; below MinWidth it scrolls. -->
+                            <StackPanel x:Name="FamilyTable" MinWidth="880">
                                 <Grid Padding="20,10" ColumnSpacing="12" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="230" />
-                                        <ColumnDefinition Width="190" />
-                                        <ColumnDefinition Width="170" />
-                                        <ColumnDefinition Width="220" />
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="1.6*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                        <ColumnDefinition Width="1.9*" />
                                         <ColumnDefinition Width="140" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="FAMILY" Style="{StaticResource ColumnHeaderStyle}" />
@@ -142,10 +155,10 @@
                                         <DataTemplate x:DataType="vm:BoardFamilyItem">
                                             <Grid Padding="20,10" ColumnSpacing="12" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="230" />
-                                                    <ColumnDefinition Width="190" />
-                                                    <ColumnDefinition Width="170" />
-                                                    <ColumnDefinition Width="220" />
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="1.6*" />
+                                                    <ColumnDefinition Width="1.5*" />
+                                                    <ColumnDefinition Width="1.9*" />
                                                     <ColumnDefinition Width="140" />
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel>

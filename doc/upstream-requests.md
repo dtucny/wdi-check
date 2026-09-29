@@ -1,209 +1,167 @@
-# WinDriverIndex: problems found and suggested changes
+# WinDriverIndex: requests from WdiCheck
 
-Building WdiCheck, a local checker that matches a PC's installed drivers against the
-[WinDriverIndex](https://windriverindex.tucny.com/) static API (spec §11, roadmap §7's "check my actual PC"),
-turned up the issues below. WdiCheck works around every one of them, and each workaround can be
-removed once the site changes. Numbers are from the `2026-09-22T15:22:43+00:00` publish.
+Problems found in the [WinDriverIndex](https://windriverindex.tucny.com/) data while building
+WdiCheck, and the changes requested. WdiCheck works around each open item until the index changes.
 
-Items are ordered by how much they would improve a client's accuracy.
+Last reviewed 2026-09-29, against data schema 2.0.x (publish of 2026-09-28).
 
-## Status (schema 2.0.0, live 2026-09-28; adopted in WdiCheck 0.2.0)
+## Status
 
-| # | Request | Status | WdiCheck |
+**Open**: needs a change in the index. **Done**: changed in the index, and WdiCheck uses it.
+**Declined**: the maintainer decided against it; the reason is in the history below.
+
+| # | Request | Index | WdiCheck |
 |---|---|---|---|
-| 1 | by-hwid last-writer-wins | Fixed (breaking; `known_versions` moved to `by-family/{id}.json`) | Not affected; WdiCheck doesn't use by-hwid |
-| 2 | Over-broad HWID sets | Fixed (chip IDs owned by one family; ~5,200 shared HWIDs remain) | Fewer ambiguous matches; ranking stays for genuine sharing |
-| 3 | Junk HWIDs | Fixed | Local filter can stay as a safeguard |
-| 4 | Class-code IDs | Fixed (18 truly generic IDs removed) | Local filter can stay |
-| 5 | JSON 404s | Needs a Cloudflare rule; also shorten the 404 TTL | WdiCheck already treats any 404 as "not indexed" |
-| 6 | INF-level versions | Added `infs.json` (per `inf_name` + DriverVer; HWIDs without SUBSYS/REV) | **Adopted.** Original INF name via SetupAPI; DriverVer compared with the newest release of that INF; package-level matching is the fallback |
-| 7 | Scheme rules / lines | Added `families.version_equiv`, `water-level.lines` with `parallel_to_water` | **Adopted.** Built-in rules kept only for 1.x data; `parallel_to_water` vetoes the successor rule |
-| 8 | SMBIOS keys | Added for Dell, HP, Lenovo, MSI | **Adopted.** Keys first; MSI shared codes resolved by name |
-| 9 | Families without HWIDs | Empty `hwids` is the board-only signal | Show those only on the board page (already the case) |
-| 10 | Consistency | Fixed | Nothing to change (array field isn't bound) |
-| 11 | Manifest / bundle | `manifest.json` added; bundle declined | **Adopted.** Cached files whose SHA-256 matches skip the request |
-| 12 | Download hints | Added for NVIDIA, AMD, Intel families | **Adopted.** Shown first under "Get the update" and in the export |
+| 9 | [Families with no HWIDs](#9-families-with-no-hwids-and-17-lenovo-inf-contents) | **Open** (crawler job) | Shows those families on the board page only |
+| 17 | [Lenovo INF contents](#9-families-with-no-hwids-and-17-lenovo-inf-contents) (e.g. `hdxacplv.inf`) | **Open** (same crawler job as #9) | Falls back to package-level comparison |
+| 14 | [Year-numbered `mtkwl6ex.inf` INF rows](#14-year-numbered-mediatek-inf-rows) | **Open** (payloads needed) | Year-numbered listings are routed and compared within their own line; INF-level comparison waits for rows |
+| 16 | BIOS version in `by-board` | Done (2026-09-29: `last_bios_version`, `last_bios_version_date`) | Used: compared with SMBIOS `BIOSVersion` (tolerating vendor formats such as MSI `7D73v1L3` for `1.L3`); shown as installed → newest like a driver update |
+| 5 | JSON body and short TTL for 404s | Done (Cloudflare rule: `{"error":"not_found"}`, `max-age=300`) | Treats any 404 as "not indexed"; never parses the body |
+| 1 | `by-hwid` kept only the last family written | Done (2.0.0, breaking) | Not affected; WdiCheck doesn't use `by-hwid` |
+| 2 | Family HWID sets too broad | Done (2.0.0) | Fewer ambiguous matches; ranking kept for genuine sharing |
+| 3 | Junk HWIDs from INF string keys | Done (2.0.0) | Local filter kept as a safeguard |
+| 4 | Generic class-code IDs in family sets | Done (2.0.0) | Local filter kept as a safeguard |
+| 6 | INF-level versions (`infs.json`) | Done (2.0.0) | Used: installed INF compared with the newest release of the same INF |
+| 7 | Scheme rules and version lines | Done (2.0.0: `version_equiv`, `lines`) | Used; built-in rules only for 1.x data |
+| 8 | SMBIOS match keys on boards | Done (2.0.0: Dell, HP, Lenovo, MSI) | Used; names only for Gigabyte, ASUS and ASRock |
+| 10 | `version_normalised` type; undocumented files | Done (2.0.0) | Nothing needed |
+| 11 | Manifest file | Done (2.0.0: `manifest.json`) | Used: unchanged files skip the download |
+| 11 | Compact client bundle | Declined | Not needed with the manifest |
+| 12 | Download hints | Done (2.0.0: NVIDIA, AMD, Intel) | Shown under "Get the update" and in the export |
+| 13 | Two DriverVer spellings of one build | Done (2.0.x: `driver_ver_aliases`) | Used: an alias counts as the same build |
+| 15 | AMD 31.x wrongly marked parallel to 32.x | Done (2.0.x: line spans fixed) | Follows the installed INF's `u*.inf` series to the newest build listing the device |
 
-### New observations from the 2.0.0 data (maintainer's second round: all three addressed in data 2.0.x)
+## Open requests
 
-> Status: the Realtek spellings are folded into one row with `driver_ver_aliases` (WdiCheck reads
-> them). Lenovo's year-numbered MediaTek builds are routed to Wi-Fi 6E/7 as a parallel 25.x line
-> (WdiCheck compares within that line through the package-level fallback; year-numbered
-> `mtkwl6ex.inf` INF rows await payload crawling). AMD 31.x is no longer marked parallel, and the
-> per-device answer comes from `infs.json`: WdiCheck follows the installed INF's `u*.inf` series
-> to the newest build listing the device.
+### 9. Families with no HWIDs, and 17. Lenovo INF contents
 
+16 families have empty `hwids`, so they can't be matched to devices. Lenovo's customised INFs,
+such as `hdxacplv.inf` for Realtek audio, have no `infs.json` rows. Both happen because HP and
+Lenovo packages are indexed from catalogue metadata only, never downloaded. The maintainer
+plans to fetch those payloads in a later crawler run.
 
-- **Two DriverVer spellings for one build.** `rt640x64.inf` has rows `10.080.0407.2026` and
-  `10.080.50.0407`, both dated 2026-04-07. The normalised arrays differ (`[10,80,407,2026]` vs
-  `[10,80,50,407]`), so the first always sorts as "newest". WdiCheck pools their download links,
-  but if both are the same build, one canonical row (or an alias field) would be cleaner.
-- **Same INF name, different numbering schemes.** `mtkwl6ex.inf` is indexed only in MediaTek's
-  vendor 3.x numbering, while Windows Update ships it as 25.x/26.x. A machine on the WU build
-  (WILLOW: `25.40.2.579`) can't be ordered against the index. Indexing the WU builds of the INF,
-  or marking rows with the source scheme, would let clients compare them.
-- **Parallel AMD display lines.** The index marks AMD 31.x as `parallel_to_water` with 32.x, yet
-  32.x display INFs (for example `u0403049.inf`) bind `PCI\VEN_1002&DEV_164E`, a Raphael iGPU on 31.x.
-  WdiCheck follows the index (current on 31.x, with a note about 32.x). If 32.x is the recommended
-  driver for such devices, a per-device flag would make that explicit.
+### 14. Year-numbered MediaTek INF rows
 
-The original report follows.
+Lenovo's year-numbered MediaTek builds (25.x/26.x) are now routed to the right families as a
+parallel line (done in 2.0.x). `infs.json` still has only MediaTek's vendor-numbered
+`mtkwl6ex.inf` (3.x), so a machine on the Windows Update build (WILLOW: `25.40.2.579`) can't be
+compared INF-to-INF. The fix needs the Lenovo or Windows Update payloads (same crawler job as #9).
 
 ---
 
-## Bugs
+## History
 
-### 1. `by-hwid/{hwid}.json` keeps only the last family written
+<details>
+<summary>Round 3 (2026-09-29): from WILLOW, checked against Lenovo Vantage (#16 done, #17 open)</summary>
 
-`publish.py` → `_emit_by_hwid` loops over families and writes `by-hwid/<hwid>.json` once per
-(family, HWID) pair. When an HWID belongs to several families, each write overwrites the
-previous one, so the file describes whichever family came last.
+- **BIOS version, not just date (#16).** `by-board` `bios` had only `last_bios`, the date the vendor
+  published its newest BIOS. Windows reports the BIOS's *build* date, and vendors publish weeks to
+  months later: WILLOW's Lenovo M3CN50WW was built 2026-04-23 and published 2026-08-07. Vantage
+  confirms it is the newest, but a date comparison said 106 days behind. Requested:
+  `last_bios_version` (Lenovo `M3CN50WW`, MSI `1.L2`), so an exact match with the SMBIOS
+  `BIOSVersion` is a reliable "current". *Resolution:* published 2026-09-29 as `last_bios_version`
+  and `last_bios_version_date`. Vendor formats differ from SMBIOS (MSI lists `7D73v1L3` for SMBIOS
+  `1.L3`), so WdiCheck compares the same-length tail of the two.
+- **Lenovo INFs (#17).** WdiCheck used to compare Lenovo's `hdxacplv.inf` with MSI's
+  `hdxacpmsi.inf`, because both bind the same Realtek chip. WdiCheck now counts only INFs in the
+  installed INF's series, and otherwise falls back to package-level comparison.
 
-- 15,836 of 59,138 distinct HWIDs (27%) are in more than one family.
-- `by-hwid/PCI_VEN_10EC+DEV_8125.json` (RTL8125, a 2.5GbE NIC) returns **Realtek 8126 LAN**. The
-  HWID is also in Realtek Wi-Fi, Realtek 8168 LAN and Realtek 8125 LAN.
+</details>
 
-This is the endpoint the spec calls the primary query shape, and for shared HWIDs it is
-currently wrong. WdiCheck doesn't use it; it downloads `families.json` and disambiguates locally.
+<details>
+<summary>Round 2 (2026-09-28): observations on the 2.0.0 data (#13–#15), all addressed in 2.0.x</summary>
 
-**Fix:** aggregate by HWID first and emit one file per HWID with a list:
+- **Two DriverVer spellings for one build (#13).** `rt640x64.inf` had rows `10.080.0407.2026` and
+  `10.080.50.0407`, both dated 2026-04-07, so the first always sorted as "newest".
+  *Resolution:* Realtek's two patterns are folded into one row, with the other spelling in
+  `driver_ver_aliases`.
+- **Same INF name, different numbering schemes (#14).** `mtkwl6ex.inf` was indexed only in vendor
+  3.x numbering, while Windows Update ships 25.x/26.x. *Resolution:* year-numbered listings are
+  routed by chip and form a parallel line that never sets the water level. INF rows are still
+  open.
+- **Parallel AMD display lines (#15).** 31.x was marked parallel to 32.x, although 32.x display
+  INFs bind a Raphael iGPU (`PCI\VEN_1002&DEV_164E`). *Resolution:* 31.x wasn't parallel; it was
+  flagged because a vendor re-listed a 31.x package in 2026. Line spans now use first appearances
+  and need 90 days of overlap. The per-device answer is the newest `u*.inf` row binding the device
+  (32.0.21043.5001), not the family water level.
 
-```json
-{ "hwid": "PCI\\VEN_10EC&DEV_8125",
-  "families": [ { "family_id": 88, "family": "Realtek 8125 LAN", "water_level": {…}, "known_versions": […] }, … ] }
-```
+</details>
 
-The filename encoding (`\` → `_`, `&` → `+`) is also undocumented; worth a line in the README.
+<details>
+<summary>Round 1 (2026-09-28): original report against schema 1.0.0 (#1–#12)</summary>
 
-### 2. Family HWID sets are over-broad
+Numbers are from the `2026-09-22T15:22:43+00:00` publish.
 
-- "Realtek Wi-Fi" contains `PCI\VEN_10EC&DEV_8125` (a LAN controller).
-- Realtek 8168 / 8125 / 8126 LAN all contain each other's device IDs.
-- AMD Graphics contains AMD HD Audio and `SWC\` software-component IDs; NVIDIA Graphics contains
-  HD Audio, virtual audio and USB-C IDs.
+#### 1. `by-hwid/{hwid}.json` keeps only the last family written
 
-This looks like every INF in a combined package contributing all its HWIDs to the package's
-family. It is the root cause of item 1, and it makes the family a poor unit for per-device checks.
+`publish.py` → `_emit_by_hwid` wrote `by-hwid/<hwid>.json` once per (family, HWID) pair, so a
+shared HWID's file described whichever family came last. 15,836 of 59,138 HWIDs (27%) were
+shared; `by-hwid/PCI_VEN_10EC+DEV_8125.json` (an RTL8125) returned "Realtek 8126 LAN".
+*Resolution:* each file lists every family, with `match_share`; `known_versions` moved to
+`by-family/{id}.json` (by-hwid went from 9.1 GB to about 40 MB).
 
-**Fix:** assign HWIDs per INF (each INF's `[Models]` section), and publish that mapping (see item 6).
+#### 2. Family HWID sets are over-broad
 
-### 3. Malformed HWIDs from INF parsing
+"Realtek Wi-Fi" contained `PCI\VEN_10EC&DEV_8125` (a LAN chip), and the Realtek LAN families
+contained each other's IDs. *Resolution:* chip-specific IDs go to their own family, an INF counts
+only for families that ship it consistently, and preinstall variants pool with their full family.
+Shared HWIDs fell from 15,836 to about 5,200.
 
-Entries such as `USB\CLASS_01.DEVICEDESC`, `PCI\AMDPCIE.DEVICEDESC`,
-`PCI\VEN_8086&DEV_09AB.DEVICEDESC` and `ACPI\PARAMETERS` are string-table keys or section names,
-not hardware IDs. **Fix:** skip `%…%` tokens, `.DeviceDesc` keys and non-model sections during extraction.
+#### 3. Malformed HWIDs from INF parsing
 
-### 4. Class-code IDs match in-box drivers
+`USB\CLASS_01.DEVICEDESC`, `PCI\AMDPCIE.DEVICEDESC`, `ACPI\PARAMETERS` and similar were string-table
+keys or section names. *Resolution:* filtered at extraction and when reading stored INF rows.
 
-207 entries are class-level IDs, for example `PCI\CC_010802` (any NVMe controller) and
-`PCI\VEN_8086&DEV_4D28&CC_0401`. A naive client matches Windows' in-box *Standard NVM Express
-Controller* to "AMD RAID" through `PCI\CC_010802`.
+#### 4. Class-code IDs match in-box drivers
 
-**Fix:** drop class-only IDs (`PCI\CC_*`, `PCI\VEN_xxxx&CC_*`, `USB\Class_*`), or flag them `"generic": true`.
+`PCI\CC_010802` matched Windows' in-box NVMe driver to "AMD RAID". *Resolution:* IDs with no device
+part are left out (18 were truly generic; IDs such as `PCI\VEN_8086&DEV_4D28&CC_0401` stay).
 
-### 5. 404s return HTML
+#### 5. 404s return HTML
 
-Missing `by-hwid` / `by-board` files return the 27 KB site 404 page with status 404. A small JSON
-body such as `{"error":"not_found"}` would be friendlier to API clients (WdiCheck only checks the status).
+Missing files returned Cloudflare's 27 KB HTML 404 page, cached for 4 hours, so a lookup that
+missed could stay a cached 404 for hours after a deploy added the file. *Resolution:* a Cloudflare
+rule on `/v1/*` now returns `{"error":"not_found"}` as `application/json` with `max-age=300`.
 
----
+#### 6. INF-level versions
 
-## Data that would make local checks accurate
+Windows reports each device's INF `DriverVer`, but listings carried package versions, so AMD GPIO
+`2.2.0.136` was compared with the AMD Chipset package `7.12.30.211`. *Resolution:* `infs.json`, one
+row per (INF name, DriverVer), with HWIDs stripped of SUBSYS/REV.
 
-### 6. INF-level versions (the most important request)
+#### 7. Version-scheme rules as data
 
-Windows reports each device's **INF `DriverVer`**, but listings carry **package** versions. A local
-checker compares two different things:
+`SCHEME_EQUIV` and the parallel-line logic existed only in `publish.py`. *Resolution:*
+`families.json` `version_equiv` (`{pattern, replace, flags, note}`), and `water-level.json` `lines`
+with `parallel_to_water`.
 
-| Device on a test PC | Installed (INF) | Family water (package) |
-|---|---|---|
-| AMD GPIO Controller | 2.2.0.136 | AMD Chipset 7.12.30.211 |
-| AMD PSP 11.0 Device | 5.43.0.0 | AMD Chipset 7.12.30.211 |
-| AMD SMBus | 5.12.0.44 | AMD Chipset 7.12.30.211 |
-| Realtek Audio Universal Service (SWC) | 1.0.1026.0 | Realtek Audio 6.4.0.2443 |
-| NVIDIA High Definition Audio | 1.4.6.3 | NVIDIA Graphics 616.92 |
+#### 8. SMBIOS identifiers on boards
 
-WdiCheck handles these with "version line" heuristics, but that is guesswork: SMBus `5.12.0.44`
-lands on the same `5.x` line as unrelated chipset listings, and gets compared against `5.40.0.0`.
+*Resolution:* `boards.json` `smbios` with `system_sku` (Dell), `baseboard_product` (HP),
+`system_product_prefix` (Lenovo) and `baseboard_product_contains` (MSI). Gigabyte, ASUS and ASRock
+publish no identifier beyond the model name.
 
-The pipeline already has what's needed: the `inf` table holds `driver_ver` per `payload_sha256`.
-**Publish it**, for example as `infs.json`:
+#### 9. Families with no HWIDs
 
-```json
-{ "inf_id": 123, "family_id": 2, "inf_name": "amdgpio2.inf", "driver_ver": "2.2.0.136",
-  "driver_date": "2025-10-11", "hwids": ["ACPI\\AMDI0030", …],
-  "artefact_ids": [4411, 5120], "first_published": "2025-11-10" }
-```
+See Open requests. The maintainer treats an empty `hwids` list as the "board only" signal, so no
+separate flag was added.
 
-With this, a client matches HWID → INF → newest `driver_ver` for that INF and compares like with
-like. That fixes the chipset, audio-component and NVIDIA-audio cases above, as well as items 1 and 2.
+#### 10. Consistency and documentation
 
-### 7. Publish the version-scheme rules as data
+`artefacts.json` `version_normalised` was a JSON-encoded string, and several files were
+undocumented. *Resolution:* now an array; `artefacts.json`, `changes.json`, `infs.json`,
+`manifest.json` and `by-family/` are listed on the homepage and in the README.
 
-`SCHEME_EQUIV` (NVIDIA INF → marketing, Realtek UAD → `6.0.x`) and the "parallel line" logic
-behind `same_line_newest` exist only in `publish.py`, so every client has to re-implement them.
-Suggested additions to `water-level.json` (or `families.json`):
+#### 11. Client bundle and manifest
 
-```json
-{ "family_id": 88, "version_scheme": "inf",
-  "lines": [ { "major": 10, "newest": "10.080.0525.2026", "newest_date": "2026-09-16" },
-             { "major": 1125, "newest": "1125.29.50.202", "newest_date": "2026-02-01", "upstream_only": true } ],
-  "equivalence": [ { "pattern": "^3\\d\\.0\\.1(\\d)\\.(\\d{4})$", "replace": "$1$2[0:2].$2[2:]" } ] }
-```
+*Resolution:* `manifest.json` added, with `{bytes, sha256}` per file. The `client-index.json`
+bundle was declined: it would repeat about 7 MB of existing files and could drift out of sync, and
+compression already addresses size.
 
-Even just `lines` would let clients drop their line heuristics.
+#### 12. Download hints
 
-Related oddity: for **AMD Chipset** the water level is `7.12.30.211` (2026-02-05), but board 1682
-(MSI MPG B650I EDGE WIFI) lists `8.03.25.247` (2026-09-18) with `same_line_newest` `8.08.12.551`
-and `lag_days` 229. The water "version" is lower than versions vendors list, presumably because
-of the effective-INF mapping. A short note in the schema on how `version` relates to the listed
-versions would prevent clients from misreading it.
+*Resolution:* `families.json` `download_hint` for NVIDIA, AMD and Intel families. OEM-customised
+drivers (Realtek audio and LAN, MediaTek, several Intel components) have none; clients should
+point to the board's `support_url`.
 
-### 8. SMBIOS identifiers on boards
-
-Board matching currently relies on names. That works for MSI (`MPG B650I EDGE WIFI (MS-7D73)` →
-`MPG B650I EDGE WIFI`), Lenovo (`vendor_product_id` is the machine type) and HP (the platform ID
-before `/`), but not everywhere. Please add explicit keys to `boards.json`:
-
-```json
-"smbios": { "baseboard_product": ["MPG B650I EDGE WIFI (MS-7D73)"], "product_code": "MS-7D73",
-            "system_sku": [], "mtm_prefix": ["10SV"], "platform_id": ["81C5"] }
-```
-
-Gigabyte revisions (`B550 X GAMING (rev. 1.x)` vs `(rev. 2.x)`) especially need the baseboard
-version so clients can pick the right listing.
-
-### 9. Families with no HWIDs
-
-16 families have empty `hwids`: Intel Platform Performance, USB Audio Firmware Tool,
-ASUS Bluetooth (unspecified), LHDC Audio, MediaTek Bluetooth, WWAN (module vendors), Card Reader,
-Intel ISH, Notebook Bluetooth/WLAN (multi-silicon), GPU VBIOS, Intel WWAN, Notebook Chipset
-(Intel/AMD), USB-C Connector Manager, Intel WAPI. These can never be matched locally. Either
-populate them from INF extraction, or mark them `"board_only": true` so clients know to surface
-them only through `by-board`.
-
-### 10. Consistency and documentation
-
-- `artefacts.json` → `version_normalised` is a JSON-encoded **string** (`"[6, 0, 9235, 1]"`), while
-  `water-level.json` uses a real array.
-- `artefacts.json` and `changes.json` are published but missing from the homepage and README
-  endpoint lists.
-- `wucatalog` artefact URLs are Update Catalog *search* links. That's fine, but a
-  `"url_kind": "search"` field would let clients label them.
-
-### 11. Client bundle and manifest
-
-A desktop client needs `families.json` + `water-level.json` + `artefacts.json` + `boards.json`
-(about 1.4 MB compressed, 15 MB raw) to check one PC. Two optional additions would help:
-
-- `manifest.json` with `generated` and a per-file ETag/size, so a client can check freshness in
-  one small request.
-- `client-index.json`: HWID → INF/family ids, per-line newest, and scheme rules only, without the
-  per-artefact detail.
-
-### 12. Actionable download hints
-
-For upstream-only water levels, the only link is a Windows Update Catalog search. A per-family
-`download_hint` (for example "NVIDIA App", "AMD Software: Adrenalin Edition", or the silicon
-vendor's landing URL) would give users something actionable, matching what `board.html` already
-says for GPUs.
+</details>

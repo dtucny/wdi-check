@@ -136,8 +136,9 @@ public class BoardMatcherTests
 public class BoardAssessmentTests
 {
     [Fact]
-    public void BiosBehindWhenVendorListsNewerDate()
+    public void BiosPublishedSoonAfterBuildIsUnconfirmed()
     {
+        // Dates only: MSI's newest is dated 73 days after this BIOS's build date — possibly the same release.
         var report = new BoardReport
         {
             Board = new Board { BoardId = 1682, Vendor = "msi", Name = "MPG B650I EDGE WIFI" },
@@ -150,12 +151,52 @@ public class BoardAssessmentTests
 
         var a = BoardAssessment.Create(report, identity, results);
 
-        Assert.Equal(BiosStatus.Behind, a.BiosStatus);
+        Assert.Equal(BiosStatus.Unconfirmed, a.BiosStatus);
         Assert.Equal(73, a.BiosLagDays);
         Assert.Equal(233, a.WorstListingLag);
         Assert.Equal("10.79.50.1003", a.Families.Single(f => f.Row.Family == "Realtek 8125 LAN").InstalledSummary);
         Assert.Equal("—", a.Families.Single(f => f.Row.Family == "AMD RAID").InstalledSummary);
     }
+
+    [Theory]
+    // WILLOW: M3CN50WW built 2026-04-23, published by Lenovo 2026-08-07 — Vantage confirms it is the newest.
+    [InlineData("2026-08-07", null, "M3CN50WW", "2026-04-23", BiosStatus.Unconfirmed)]
+    [InlineData("2026-08-07", "M3CN50WW", "M3CN50WW", "2026-04-23", BiosStatus.Current)]
+    [InlineData("2026-08-07", "M3CN50WW", "M3CN49WW", "2026-02-10", BiosStatus.Behind)]
+    [InlineData("2026-08-07", null, "M3CN41WW", "2023-12-01", BiosStatus.Behind)]
+    [InlineData("2026-08-07", null, "M3CN51WW", "2026-09-01", BiosStatus.Current)]
+    [InlineData(null, null, "M3CN50WW", "2026-04-23", BiosStatus.Unknown)]
+    // MSI lists "7D73v1L2" for what SMBIOS reports as "1.L2".
+    [InlineData("2026-09-09", "7D73v1L2", "1.L2", "2026-06-28", BiosStatus.Current)]
+    // This PC on 2026-09-29: MSI's newest is 7D73v1L3, installed 1.L2 — genuinely one BIOS behind.
+    [InlineData("2026-09-09", "7D73v1L3", "1.L2", "2026-06-28", BiosStatus.Behind)]
+    // Formats that can't be compared (different shapes): the date heuristic decides.
+    [InlineData("2026-09-09", "1.24.0", "A24", "2026-06-28", BiosStatus.Unconfirmed)]
+    // HP SMBIOS "S70 Ver. 01.29.00" vs the site's "01.29.00".
+    [InlineData("2026-05-01", "01.29.00", "S70 Ver. 01.29.00", "2026-03-15", BiosStatus.Current)]
+    // Case and punctuation don't matter.
+    [InlineData("2026-08-07", "m3cn50ww", " M3CN50WW ", "2026-04-23", BiosStatus.Current)]
+    public void BiosVersionIsAuthoritativeAndDatesAreHedged(string? vendorDate, string? vendorVersion, string installed, string built, BiosStatus expected)
+    {
+        var report = new BoardReport { Board = new Board(), Bios = new BoardBios { LastBios = vendorDate, LastBiosVersion = vendorVersion } };
+        var identity = new SystemIdentity { BiosVersion = installed, BiosReleaseDate = DateOnly.Parse(built) };
+
+        Assert.Equal(expected, BoardAssessment.Create(report, identity, []).BiosStatus);
+    }
+
+    [Theory]
+    [InlineData("M3CN50WW", "M3CN50WW", "Same")]
+    [InlineData("7D73v1L2", "1.L2", "Same")]
+    [InlineData("01.29.00", "S70 Ver. 01.29.00", "Same")]
+    [InlineData("M3CN50WW", "M3CN49WW", "Different")]
+    [InlineData("F12", "F11", "Different")]
+    [InlineData("7D73v1L3", "1.L2", "Different")]
+    [InlineData("S70 Ver. 01.29.00", "01.28.00", "Different")]
+    [InlineData("1.24.0", "A24", "Incomparable")]
+    [InlineData("F12", "F2", "Incomparable")] // a 2-character tail is too short to trust
+    [InlineData("", "1.L2", "Incomparable")]
+    public void BiosVersionFormats(string vendor, string installed, string expected) =>
+        Assert.Equal(expected, BoardAssessment.CompareBiosVersions(vendor, installed).ToString());
 
     [Fact]
     public void BiosCurrentWhenInstalledIsNewest()

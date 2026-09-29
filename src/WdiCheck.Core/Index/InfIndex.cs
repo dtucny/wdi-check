@@ -126,10 +126,14 @@ public sealed class InfIndex
             // With the installed INF's series known (AMD renames display INFs every release: u0401611.inf,
             // u0199286.inf → "u.inf"), the directly following line counts too — that is how a 31.x install learns
             // which 32.x build its device is listed in. Without it, only the same line is safe.
+            // Another OEM's customisation of the same driver binds the same chip under a different series
+            // (Lenovo hdxacplv.inf vs MSI hdxacpmsi.inf), so with the installed series known, only that series counts.
             var series = Series(name);
             pool.AddRange(hits.Where(r =>
                 r.Version.Line is { } l
-                && (l == line || (series is not null && series == Series(r.InfName) && line.IsFollowedBy(l)))
+                && (series is null || r.InfName is null
+                    ? l == line
+                    : series == Series(r.InfName) && (l == line || line.IsFollowedBy(l)))
                 && ClassMatches(r.Row.Class, device.Class)
                 && !(byName && string.Equals(r.InfName, name, StringComparison.OrdinalIgnoreCase))));
             break;

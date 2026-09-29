@@ -142,6 +142,10 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
         try
         {
             var report = await client.GetBoardReportAsync(board.BoardId, revalidate, ct).ConfigureAwait(false);
+            // Board reports aren't in the manifest, so a cached one can predate the index it's shown with
+            // (e.g. from before a publish that added BIOS versions): ask the server again in that case.
+            if (!revalidate && IsOlder(report.Value.Generated, snapshot.Freshness.IndexGenerated))
+                report = await client.GetBoardReportAsync(board.BoardId, revalidate: true, ct).ConfigureAwait(false);
             return snapshot with
             {
                 SelectedBoard = board,
@@ -155,4 +159,9 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
             return snapshot with { SelectedBoard = board, BoardIsOverride = isOverride, Board = null, BoardError = ex.Message };
         }
     }
+
+    internal static bool IsOlder(string? generated, string? than) =>
+        DateTimeOffset.TryParse(generated, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var a)
+        && DateTimeOffset.TryParse(than, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var b)
+        && a < b;
 }

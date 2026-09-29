@@ -171,6 +171,15 @@ public sealed class BoardReport
 public sealed class BoardBios
 {
     public string? LastBios { get; init; }
+
+    /// <summary>
+    /// The vendor's newest BIOS version as listed, e.g. "M3CN50WW" (addressed upstream; data update in flight).
+    /// Formats can differ from SMBIOS (MSI "7D73v1L2" vs "1.L2"); see BoardAssessment.CompareBiosVersions.
+    /// </summary>
+    public string? LastBiosVersion { get; init; }
+
+    /// <summary>Publish date of <see cref="LastBiosVersion"/>.</summary>
+    public string? LastBiosVersionDate { get; init; }
     public string? Agesa { get; init; }
     public string? AgesaLine { get; init; }
     public bool? AgesaAtWater { get; init; }

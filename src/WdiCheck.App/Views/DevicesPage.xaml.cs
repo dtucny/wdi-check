@@ -136,6 +136,26 @@ public sealed partial class DevicesPage : Page, INotifyPropertyChanged
             await Windows.System.Launcher.LaunchUriAsync(uri);
     }
 
+    /// <summary>
+    /// List width the column layout needs: a usable device/family column (~200) plus three 150 px columns,
+    /// spacing and item/scrollbar padding. Narrower lists use the compact rows (installed → newest under the name).
+    /// </summary>
+    private const double ColumnLayoutMinWidth = 740;
+
+    private bool? _columnLayout;
+
+    // Driven by the list's own width, not the window's: the navigation pane and the detail pane's position
+    // both change how much room the list gets at a given window width.
+    private void ListCard_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var columns = e.NewSize.Width >= ColumnLayoutMinWidth;
+        if (_columnLayout == columns)
+            return;
+        _columnLayout = columns;
+        DeviceList.ItemTemplate = (DataTemplate)Resources[columns ? "WideRowTemplate" : "NarrowRowTemplate"];
+        VersionColumns.Visibility = columns ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

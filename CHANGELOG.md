@@ -9,6 +9,41 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-29
+
+### Added
+- **BIOS updates shown like driver updates.** When the vendor lists a newer BIOS, the Overview shows
+  installed → newest (`1.L2 → 7D73v1L3`), mentions it in the headline, and puts it at the top of
+  "Needs attention". The board page shows the newest version with its date, and a "Get the update"
+  link to the vendor's support page. Uses the index's new `last_bios_version`.
+
+### Fixed
+- **BIOS shown as "behind" when current.** Windows reports a BIOS's build date and the index lists
+  the vendor's publish date, and vendors publish months after building: WILLOW's M3CN50WW was built
+  2026-04-23 and published 2026-08-07. It is Lenovo's newest, but showed as 106 days behind. With
+  dates only, a vendor BIOS published within 180 days of the installed build date now shows
+  "Probably current", with an explanation. When the index provides the vendor's BIOS version
+  (`last_bios_version`), it's compared directly. The comparison tolerates vendor formats: MSI lists
+  `7D73v1L2` for SMBIOS `1.L2`, and HP SMBIOS says `S70 Ver. 01.29.00` for `01.29.00`. Formats
+  that can't be compared fall back to the date rule rather than a false "behind".
+- **Another OEM's INF used as the update target.** Lenovo's Realtek audio (`hdxacplv.inf`) was
+  compared with MSI's `hdxacpmsi.inf`, because both bind the same chip. INFs reached through a
+  hardware ID now count only in the installed INF's series.
+- **Later build shown as current.** A newer build of the same release (Bluetooth `26.40.3.65` vs
+  installed `26.40.2.228`) showed as current because one vendor listed the older build later. The
+  "sibling component" rule now applies only when the first two version numbers differ.
+- **Board report older than the index.** Board reports aren't covered by the manifest, so a cached
+  report could predate the index data it was shown with. It is now re-checked when that happens.
+- **Board page table scrolled sideways by a few pixels.** Its fixed column widths were slightly
+  wider than the card. The columns now share the card's width and wrap, and the table scrolls only
+  when the window is narrower than 880 px.
+- **Drivers list squeezed the device column to nothing** at window widths from about 1,100 to
+  1,500 px. The column layout switched on window width, but the list's real width also depends on
+  the navigation and detail panes. Rows now switch between columns and the compact layout
+  (installed → newest under the name) on the list's own width.
+- **Garbled board search placeholder** (`â€œB650 Tomahawkâ€`) and the `·` separator in its
+  suggestions, both broken by an encoding slip in 0.2.3.
+
 ## [0.2.3] - 2026-09-29
 
 ### Changed
@@ -122,7 +157,8 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
-[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/dtucny/wdi-check/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/dtucny/wdi-check/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/dtucny/wdi-check/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dtucny/wdi-check/compare/v0.2.0...v0.2.1

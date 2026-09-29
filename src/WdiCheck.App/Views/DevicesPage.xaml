@@ -63,8 +63,6 @@
                         <Setter Target="DetailPane.(Grid.Row)" Value="1" />
                         <Setter Target="DetailPane.MaxHeight" Value="380" />
                         <Setter Target="DetailPane.Margin" Value="0,12,0,0" />
-                        <Setter Target="VersionColumns.Visibility" Value="Collapsed" />
-                        <Setter Target="DeviceList.ItemTemplate" Value="{StaticResource NarrowRowTemplate}" />
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
@@ -115,7 +113,8 @@
                 <RowDefinition x:Name="DetailRow" Height="0" />
             </Grid.RowDefinitions>
 
-            <Border Style="{StaticResource CardStyle}" Padding="0">
+            <!-- Rows switch between the column layout and the compact one on this card's width (code-behind). -->
+            <Border x:Name="ListCard" Style="{StaticResource CardStyle}" Padding="0" SizeChanged="ListCard_SizeChanged">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />

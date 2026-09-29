@@ -77,15 +77,40 @@ public sealed class SnapshotView
 
         var installedBios = $"{s.Identity.BiosVersion ?? "unknown"}{(s.Identity.BiosReleaseDate is { } bd ? $" ({Display.Date(bd)})" : "")}";
         InstalledBiosText = installedBios;
+        BiosSummaryText = installedBios;
         if (b is not null)
         {
-            VendorBiosText = b.VendorLastBios is { } vb ? Display.Date(vb) : "not listed";
+            var vendorVersion = b.Report.Bios?.LastBiosVersion;
+            var vendorDate = b.VendorLastBios is { } vb ? Display.Date(vb) : null;
+            VendorBiosText = string.IsNullOrWhiteSpace(vendorVersion)
+                ? vendorDate ?? "not listed"
+                : vendorDate is null ? vendorVersion : $"{vendorVersion} ({vendorDate})";
+
+            // Shown like a driver update: installed → newest, in the headline, "Needs attention" and with a link.
+            BiosUpdateAvailable = b.BiosStatus == BiosStatus.Behind;
+            if (BiosUpdateAvailable)
+            {
+                var target = string.IsNullOrWhiteSpace(vendorVersion) ? $"newer BIOS ({vendorDate})" : vendorVersion;
+                BiosSummaryText = $"{s.Identity.BiosVersion ?? "installed"} → {target}";
+                BiosUpdateText = $"{Display.Vendor(b.Report.Board.Vendor)} {b.Report.Board.Name} · {BiosSummaryText}";
+                Headline += string.IsNullOrWhiteSpace(vendorVersion)
+                    ? " The vendor also lists a newer BIOS."
+                    : $" The vendor also lists a newer BIOS, {vendorVersion}.";
+                if (HeadlineSeverity == Severity.Good)
+                    HeadlineSeverity = Severity.Warning;
+            }
             (BiosPill, BiosSeverity) = b.BiosStatus switch
             {
                 BiosStatus.Current => ("Current", Severity.Good),
                 BiosStatus.Behind => (Display.Lag(b.BiosLagDays), Display.LagSeverity(b.BiosLagDays)),
+                BiosStatus.Unconfirmed => ("Probably current", Severity.Neutral),
                 _ => ("Unknown", Severity.Neutral),
             };
+            BiosNote = b.BiosStatus == BiosStatus.Unconfirmed
+                ? $"The vendor's newest BIOS was published {b.BiosLagDays} days after your BIOS's build date. Vendors usually publish a " +
+                  $"BIOS weeks to months after building it, so this is likely the same release; the index lists only dates, not versions. " +
+                  $"Check that {s.Identity.BiosVersion ?? "your version"} is the newest on the vendor's support page."
+                : "";
             AgesaText = b.Report.Bios?.Agesa is { } ag
                 ? $"Vendor's newest BIOS ships AGESA {ag} ({b.Report.Bios.AgesaLine})" + (b.Report.Bios.AgesaAtWater == true ? " — the newest AMD has released." : " — AMD has released newer.")
                 : "";
@@ -119,7 +144,22 @@ public sealed class SnapshotView
     public IReadOnlyList<DeviceRowViewModel> Rows { get; }
     public IReadOnlyList<SummaryTile> Tiles { get; }
     public IReadOnlyList<DeviceRowViewModel> Attention { get; }
-    public bool HasAttention => Attention.Count > 0;
+    public bool HasAttention => Attention.Count > 0 || BiosUpdateAvailable;
+
+    /// <summary>The vendor lists a newer BIOS than the installed one.</summary>
+    public bool BiosUpdateAvailable { get; }
+
+    /// <summary>"1.L2 (2026-06-28)", or "1.L2 → 7D73v1L3" when an update is available.</summary>
+    public string BiosSummaryText { get; } = "";
+
+    /// <summary>The "Needs attention" line for a BIOS update: board and installed → newest.</summary>
+    public string BiosUpdateText { get; } = "";
+
+    public bool HasBiosUpdateLink => BiosUpdateAvailable && SupportUrl is not null;
+
+    public string BiosUpdateLinkText => Snapshot.Board is { } b
+        ? $"{Display.Vendor(b.Report.Board.Vendor)} · {(string.IsNullOrWhiteSpace(b.Report.Bios?.LastBiosVersion) ? "newest BIOS" : $"BIOS {b.Report.Bios.LastBiosVersion}")}"
+        : "";
     public string Headline { get; }
     public Severity HeadlineSeverity { get; }
     public string IdentityText { get; }
@@ -140,6 +180,8 @@ public sealed class SnapshotView
     public bool HasBoardError => BoardError.Length > 0;
     public string InstalledBiosText { get; }
     public string VendorBiosText { get; } = "";
+    public string BiosNote { get; } = "";
+    public bool HasBiosNote => BiosNote.Length > 0;
     public string BiosPill { get; } = "Unknown";
     public Severity BiosSeverity { get; } = Severity.Neutral;
     public string AgesaText { get; } = "";

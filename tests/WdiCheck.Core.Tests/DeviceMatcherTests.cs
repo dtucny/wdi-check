@@ -1,3 +1,4 @@
+using WdiCheck.Core.Index;
 using WdiCheck.Core.Matching;
 using WdiCheck.Core.Reporting;
 
@@ -173,6 +174,23 @@ public class DeviceMatcherTests
         Assert.Equal(DriverStatus.Current, r.Status);
         Assert.Equal("616.92", r.Installed?.Raw);
         Assert.Equal(MatchConfidence.ExactVersion, r.Confidence);
+    }
+
+    [Fact]
+    public void LaterBuildOfTheSameReleaseIsAnUpdateWhateverTheListingDates()
+    {
+        // WILLOW: Bluetooth 26.40.2.228 vs 26.40.3.65 — Lenovo listed the older build after WU listed the newer one.
+        var family = new Api.Family { FamilyId = 56, Name = "MediaTek Bluetooth (Wi-Fi 6E)", Component = "bluetooth", Hwids = [@"USB\VID_0489&PID_E0D8&MI_00"] };
+        Api.Artefact A(int id, string vendor, string v, string d) =>
+            new() { ArtefactId = id, Vendor = vendor, Kind = "driver", FamilyId = 56, VersionRaw = v, ReleaseDate = d, Url = $"https://example.invalid/{v}" };
+        var index = DriverIndex.Build([family], [], [A(1, "wucatalog", "26.40.3.65", "2026-06-09"), A(2, "lenovo", "26.40.2.228", "2026-07-01")]);
+        var bt = Fixtures.Device("RZ616 Bluetooth(R) Adapter", "26.40.2.228", "Mediatek Inc.", "oem184.inf", [@"USB\VID_0489&PID_E0D8&MI_00"]);
+
+        var r = new DeviceMatcher(index).Match(bt);
+
+        Assert.Equal(DriverStatus.Behind, r.Status);
+        Assert.Equal("26.40.3.65", r.Update?.Raw);
+        Assert.Null(r.LagDays);
     }
 
     [Fact]

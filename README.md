@@ -112,7 +112,7 @@ src\WdiCheck.App\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\WdiCheck.exe
 ```
 
 Artifact names carry the version from `Directory.Build.props`, for example
-`artifacts/WdiCheck-0.2.3-win-x64.zip` and `artifacts/WdiCheck-0.2.3-win-x64-unsigned.msix`
+`artifacts/WdiCheck-0.2.4-win-x64.zip` and `artifacts/WdiCheck-0.2.4-win-x64-unsigned.msix`
 (the `-unsigned` suffix is dropped when a certificate is given).
 
 Release builds are trimmed and include only the WinUI part of the Windows App SDK, so each
@@ -126,7 +126,7 @@ Windows App SDK are bundled, so it runs by double-clicking `WdiCheck.exe`, with 
 ```powershell
 ./scripts/new-dev-cert.ps1 -Trust          # elevated; creates CN=WdiCheck Dev and trusts it
 ./scripts/build.ps1 -Msix -CertificateThumbprint <thumbprint printed above>
-Add-AppxPackage artifacts\WdiCheck-0.2.3-win-x64.msix
+Add-AppxPackage artifacts\WdiCheck-0.2.4-win-x64.msix
 ./scripts/new-dev-cert.ps1 -Untrust        # when done
 ```
 
@@ -146,8 +146,8 @@ Pushing a version tag makes GitHub Actions build and publish a release
 3. Commit, then tag and push:
 
    ```powershell
-   git tag -a v0.2.3 -m "WdiCheck 0.2.3"
-   git push origin main v0.2.3
+   git tag -a v0.2.4 -m "WdiCheck 0.2.4"
+   git push origin main v0.2.4
    ```
 
 The workflow checks that the tag matches both version numbers. It then runs the tests,
