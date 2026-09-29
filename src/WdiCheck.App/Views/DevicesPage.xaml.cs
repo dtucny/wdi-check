@@ -72,8 +72,10 @@ public sealed partial class DevicesPage : Page, INotifyPropertyChanged
         var showAll = ViewModel.ShowInboxAndUnmatched;
         var query = ViewModel.SearchText.Trim();
         var rows = view.Rows
-            .Where(r => Filters.Accept(filter, r.Result))
-            .Where(r => showAll || r.Result.Status is not (Core.Matching.DriverStatus.Inbox or Core.Matching.DriverStatus.NotIndexed))
+            // A device Windows Update has an update for is shown even when the index doesn't know it.
+            .Where(r => Filters.Accept(filter, r.Result) || (filter == Filters.AllMatched && r.HasWindowsUpdateUpdate))
+            .Where(r => showAll || r.HasWindowsUpdateUpdate
+                        || r.Result.Status is not (Core.Matching.DriverStatus.Inbox or Core.Matching.DriverStatus.NotIndexed))
             .Where(r => r.Matches(query))
             .ToList();
 
@@ -156,7 +158,8 @@ public sealed partial class DevicesPage : Page, INotifyPropertyChanged
         VersionColumns.Visibility = columns ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private async void OpenOptionalUpdates_Click(object sender, RoutedEventArgs e) => await MainViewModel.OpenOptionalUpdatesAsync();
+    private async void OpenWindowsUpdate_Click(object sender, RoutedEventArgs e) =>
+        await MainViewModel.OpenWindowsUpdateAsync(Selected?.WindowsUpdateOfferIsOptional == true);
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

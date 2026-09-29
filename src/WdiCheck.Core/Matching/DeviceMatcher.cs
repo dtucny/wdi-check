@@ -104,6 +104,13 @@ public sealed class DeviceResult
     /// <summary>The release to update to, when behind.</summary>
     public VersionRef? Target => Status == DriverStatus.Behind ? Update : null;
 
+    /// <summary>
+    /// The update is known only from the Windows Update Catalog: some OEM's machine is offered it, which doesn't mean
+    /// this machine will be.
+    /// </summary>
+    public bool UpdateOnlyFromCatalog =>
+        Target is { Artefacts.Count: > 0 } t && t.Artefacts.All(a => string.Equals(a.Vendor, "wucatalog", StringComparison.OrdinalIgnoreCase));
+
     /// <summary>Behind on the evidence of a same-line package version rather than an exact listing or INF.</summary>
     public bool IsApproximate => Confidence == MatchConfidence.SameLine;
 }

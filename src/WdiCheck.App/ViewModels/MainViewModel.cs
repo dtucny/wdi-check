@@ -132,9 +132,14 @@ public sealed partial class MainViewModel : ObservableObject
         View = new SnapshotView(View.Snapshot, _windowsUpdate);
     }
 
-    /// <summary>Opens Settings › Windows Update › Optional updates, where Windows lists offered drivers.</summary>
-    public static Task OpenOptionalUpdatesAsync() =>
-        Windows.System.Launcher.LaunchUriAsync(new Uri("ms-settings:windowsupdate-optionalupdates")).AsTask();
+    /// <summary>
+    /// Opens Settings › Windows Update › Optional updates when every offer is optional; otherwise the main Windows
+    /// Update page, where automatic driver updates are listed and installed.
+    /// </summary>
+    public static Task OpenWindowsUpdateAsync(bool optionalOnly) =>
+        Windows.System.Launcher.LaunchUriAsync(new Uri(optionalOnly
+            ? "ms-settings:windowsupdate-optionalupdates"
+            : "ms-settings:windowsupdate")).AsTask();
 
     /// <summary>Use a specific catalogue entry for this PC (persisted), or null to go back to automatic matching.</summary>
     public async Task SelectBoardAsync(Board? board)
@@ -202,7 +207,7 @@ public sealed partial class MainViewModel : ObservableObject
                     windowsUpdate: _windowsUpdate.Status == WindowsUpdateStatus.Done ? _windowsUpdate.Offers : null);
             else
                 await ReportExporter.WriteCsvAsync(stream, snapshot.Results,
-                    windowsUpdate: _windowsUpdate.Status == WindowsUpdateStatus.Done ? _windowsUpdate.Offers : null);
+                    windowsUpdate: _windowsUpdate.Status == WindowsUpdateStatus.Done ? _windowsUpdate.Offers : null, identity: snapshot.Identity);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

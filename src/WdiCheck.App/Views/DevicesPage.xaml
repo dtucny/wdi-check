@@ -214,8 +214,8 @@
                             <StackPanel Spacing="2" Visibility="{x:Bind Selected.HasWindowsUpdateText, Mode=OneWay, FallbackValue=Collapsed}">
                                 <TextBlock Text="Windows Update" Style="{StaticResource ColumnHeaderStyle}" />
                                 <TextBlock Text="{x:Bind Selected.WindowsUpdateText, Mode=OneWay}" TextWrapping="Wrap" />
-                                <HyperlinkButton Content="Open optional updates" Click="OpenOptionalUpdates_Click" Padding="0,2"
-                                                 Visibility="{x:Bind Selected.HasWindowsUpdateOffer, Mode=OneWay, FallbackValue=Collapsed}" />
+                                <HyperlinkButton Content="{x:Bind Selected.WindowsUpdateButtonText, Mode=OneWay}" Click="OpenWindowsUpdate_Click" Padding="0,2"
+                                                 Visibility="{x:Bind Selected.HasWindowsUpdateUpdate, Mode=OneWay, FallbackValue=Collapsed}" />
                             </StackPanel>
 
                             <InfoBar Severity="Informational" IsClosable="False" Title="Different version line"

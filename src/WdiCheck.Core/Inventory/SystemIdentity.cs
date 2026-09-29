@@ -18,6 +18,12 @@ public sealed record SystemIdentity
     public string? BiosVersion { get; init; }
     public DateOnly? BiosReleaseDate { get; init; }
 
+    /// <summary>
+    /// ESRT firmware resources of type "system firmware", i.e. the BIOS itself (HKLM\HARDWARE\UEFI\ESRT).
+    /// Empty on legacy BIOS or when unreadable.
+    /// </summary>
+    public IReadOnlyList<Guid> SystemFirmwareResources { get; init; } = [];
+
     public string DisplayName
     {
         get
@@ -61,6 +67,31 @@ public sealed record SystemIdentity
             // SMBIOS mandates mm/dd/yyyy.
             BiosReleaseDate = DateOnly.TryParseExact(Get("BIOSReleaseDate"), "MM/dd/yyyy", CultureInfo.InvariantCulture,
                 DateTimeStyles.None, out var d) ? d : null,
+            SystemFirmwareResources = ReadSystemFirmwareResources(),
         };
+    }
+
+    // ESRT entry Type: 1 = system firmware, 2 = device firmware, 3 = UEFI driver. Readable without elevation.
+    private static IReadOnlyList<Guid> ReadSystemFirmwareResources()
+    {
+        try
+        {
+            using var esrt = Registry.LocalMachine.OpenSubKey(@"HARDWARE\UEFI\ESRT");
+            if (esrt is null)
+                return [];
+            var list = new List<Guid>();
+            foreach (var name in esrt.GetSubKeyNames())
+            {
+                using var entry = esrt.OpenSubKey(name);
+                if (entry?.GetValue("Type") is int type && type == 1 && Guid.TryParse(name, out var guid))
+                    list.Add(guid);
+            }
+
+            return list;
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return [];
+        }
     }
 }

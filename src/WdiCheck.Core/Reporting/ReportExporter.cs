@@ -14,17 +14,18 @@ public static class ReportExporter
         "device", "class", "status", "confidence", "component", "family", "installed_version", "installed_date",
         "driver_provider", "inf", "original_inf", "matched_inf", "newest", "newest_date", "family_newest", "family_newest_date",
         "lag_days", "matched_id", "instance_id", "download_url", "download_hint", "windows_update_offer", "windows_update_date",
+        "windows_update_note",
     ];
 
     public static async Task WriteCsvAsync(Stream stream, IEnumerable<DeviceResult> results, CancellationToken ct = default,
-        IReadOnlyList<WindowsUpdateOffer>? windowsUpdate = null)
+        IReadOnlyList<WindowsUpdateOffer>? windowsUpdate = null, SystemIdentity? identity = null)
     {
         await using var w = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), leaveOpen: true);
         await w.WriteLineAsync(string.Join(',', Columns)).ConfigureAwait(false);
         foreach (var r in results)
         {
             ct.ThrowIfCancellationRequested();
-            await w.WriteLineAsync(string.Join(',', Row(r, windowsUpdate).Select(Csv))).ConfigureAwait(false);
+            await w.WriteLineAsync(string.Join(',', Row(r, windowsUpdate, identity).Select(Csv))).ConfigureAwait(false);
         }
     }
 
@@ -32,6 +33,7 @@ public static class ReportExporter
         BoardAssessment? board, string? indexGenerated, CancellationToken ct = default,
         IReadOnlyList<WindowsUpdateOffer>? windowsUpdate = null)
     {
+        var list = results as IReadOnlyList<DeviceResult> ?? results.ToList();
         await using var w = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
         w.WriteStartObject();
         w.WriteString("generated", DateTimeOffset.Now.ToString("o", CultureInfo.InvariantCulture));
@@ -74,6 +76,18 @@ public static class ReportExporter
                 w.WriteString("class", o.DriverClass);
                 w.WriteString("provider", o.Provider);
                 w.WriteBoolean("optional", o.BrowseOnly);
+                w.WriteBoolean("matches_installed_bios", identity is not null && o.MatchesInstalledBios(identity));
+                w.WriteStartArray("applies_to");
+                foreach (var r in list.Where(r => o.AppliesTo(r.Device)))
+                {
+                    w.WriteStartObject();
+                    w.WriteString("device", r.Device.Name);
+                    w.WriteString("instance_id", r.Device.InstanceId);
+                    w.WriteString("installed_version", r.Device.DriverVersion);
+                    w.WriteEndObject();
+                }
+
+                w.WriteEndArray();
                 w.WriteEndObject();
             }
 
@@ -81,11 +95,11 @@ public static class ReportExporter
         }
 
         w.WriteStartArray("devices");
-        foreach (var r in results)
+        foreach (var r in list)
         {
             ct.ThrowIfCancellationRequested();
             w.WriteStartObject();
-            var row = Row(r, windowsUpdate);
+            var row = Row(r, windowsUpdate, identity);
             for (var i = 0; i < Columns.Length; i++)
             {
                 if (Columns[i] == "lag_days" && r.LagDays is { } lag)
@@ -102,7 +116,7 @@ public static class ReportExporter
         await w.FlushAsync(ct).ConfigureAwait(false);
     }
 
-    private static string?[] Row(DeviceResult r, IReadOnlyList<WindowsUpdateOffer>? windowsUpdate)
+    private static string?[] Row(DeviceResult r, IReadOnlyList<WindowsUpdateOffer>? windowsUpdate, SystemIdentity? identity)
     {
         var offer = windowsUpdate?.FirstOrDefault(o => o.AppliesTo(r.Device));
         var family = r.Family;
@@ -132,6 +146,9 @@ public static class ReportExporter
             r.Status == DriverStatus.Behind ? DownloadLinks.Hint(r)?.Url : null,
             offer?.Version?.Raw ?? (offer is null ? null : offer.Title),
             Date(offer?.DriverDate),
+            offer is null ? null
+                : identity is not null && offer.MatchesInstalledBios(identity) ? "matches installed BIOS"
+                : offer.BrowseOnly ? "optional" : "installs automatically",
         ];
     }
 

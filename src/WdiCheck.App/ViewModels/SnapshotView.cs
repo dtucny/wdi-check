@@ -1,6 +1,7 @@
 using WdiCheck.Core.Api;
 using WdiCheck.Core.Matching;
 using WdiCheck.Core.Scanning;
+using WdiCheck.Core.WindowsUpdate;
 
 namespace WdiCheck.App.ViewModels;
 
@@ -19,7 +20,7 @@ public sealed class SnapshotView
         WindowsUpdate = windowsUpdate ?? WindowsUpdateInfo.Off;
         var boardVendor = s.SelectedBoard?.Vendor;
         Rows = s.Results
-            .Select(r => new DeviceRowViewModel(r, boardVendor, WindowsUpdate))
+            .Select(r => new DeviceRowViewModel(r, boardVendor, WindowsUpdate, s.Identity))
             .OrderBy(r => r.SortKey)
             .ThenByDescending(r => r.Result.LagDays ?? 0)
             .ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
@@ -39,12 +40,18 @@ public sealed class SnapshotView
             new(Count(r => r.Status == DriverStatus.NotIndexed).ToString(), "Not in index", Severity.Neutral, Filters.NotIndexed),
         ];
 
-        Attention = Rows.Where(r => r.Result.Status == DriverStatus.Behind).Take(8).ToList();
+        // Behind first (sorted by lag), then devices Windows Update has an update for that the index doesn't flag.
+        Attention = Rows.Where(r => r.Result.Status == DriverStatus.Behind).Take(8)
+            .Concat(Rows.Where(r => r.HasWindowsUpdateUpdate && r.Result.Status != DriverStatus.Behind))
+            .ToList();
+        WindowsUpdateUpdates = WindowsUpdate.Offers.Where(o => !o.MatchesInstalledBios(s.Identity)).ToList();
+        WindowsUpdateSameAsBios = WindowsUpdate.Offers.Where(o => o.MatchesInstalledBios(s.Identity)).ToList();
         var matched = Count(r => r.Status is DriverStatus.Current or DriverStatus.Behind);
-        Headline = Attention.Count == 0
+        var behindCount = Count(r => r.Status == DriverStatus.Behind);
+        Headline = behindCount == 0
             ? matched == 0 ? "No indexed drivers found on this PC." : $"All {matched} comparable drivers are current."
             : $"{Count(r => r.Status == DriverStatus.Behind)} of {matched} comparable drivers have a newer release.";
-        HeadlineSeverity = farBehind > 0 ? Severity.Critical : Attention.Count > 0 ? Severity.Warning : Severity.Good;
+        HeadlineSeverity = farBehind > 0 ? Severity.Critical : behindCount > 0 ? Severity.Warning : Severity.Good;
 
         IdentityText = s.Identity.DisplayName;
         var f = s.Freshness;
@@ -149,31 +156,49 @@ public sealed class SnapshotView
 
     public bool IsSearchingWindowsUpdate => WindowsUpdate.Status == WindowsUpdateStatus.Searching;
 
-    public bool HasWindowsUpdateOffers => WindowsUpdate.Offers.Count > 0;
+    /// <summary>Offers that would change something (excludes a repackaged copy of the installed BIOS).</summary>
+    public IReadOnlyList<WindowsUpdateOffer> WindowsUpdateUpdates { get; }
+
+    /// <summary>System-firmware packages dated the same day as the installed BIOS.</summary>
+    public IReadOnlyList<WindowsUpdateOffer> WindowsUpdateSameAsBios { get; }
+
+    public bool HasWindowsUpdateUpdates => WindowsUpdateUpdates.Count > 0;
+
+    /// <summary>Every real offer is optional, so they're listed under Optional updates rather than on the main page.</summary>
+    public bool WindowsUpdateOnlyOptional => HasWindowsUpdateUpdates && WindowsUpdateUpdates.All(o => o.BrowseOnly);
+
+    public string WindowsUpdateButtonText => WindowsUpdateOnlyOptional ? "Open optional updates" : "Open Windows Update";
 
     /// <summary>One line on the Overview: what Windows Update offers this exact machine.</summary>
     public string WindowsUpdateText => WindowsUpdate.Status switch
     {
         WindowsUpdateStatus.Searching => "Checking Windows Update for drivers it offers this PC…",
-        WindowsUpdateStatus.Done when WindowsUpdate.Offers.Count == 0 =>
-            "Windows Update offers no driver updates for this PC. Newer builds listed below come from other vendors' or models' packages, which Windows Update doesn't target at this machine.",
-        WindowsUpdateStatus.Done => WindowsUpdate.Offers.Count == 1
-            ? "Windows Update offers 1 driver update for this PC."
-            : $"Windows Update offers {WindowsUpdate.Offers.Count} driver updates for this PC.",
+        WindowsUpdateStatus.Done when WindowsUpdateUpdates.Count == 0 =>
+            "Windows Update offers no driver updates for this PC." +
+            (WindowsUpdateSameAsBios.Count > 0 ? " The firmware package it lists matches the installed BIOS (below)." : "") +
+            " Newer builds the index lists come from other vendors' or models' packages, which Windows Update doesn't target at this machine.",
+        WindowsUpdateStatus.Done => (WindowsUpdateUpdates.Count == 1
+                ? "Windows Update offers 1 driver update for this PC."
+                : $"Windows Update offers {WindowsUpdateUpdates.Count} driver updates for this PC.") +
+            (WindowsUpdateUpdates.Any(o => !o.BrowseOnly) ? " Windows installs those that aren't optional automatically." : ""),
         WindowsUpdateStatus.Failed => $"Couldn't check Windows Update: {WindowsUpdate.Result?.Error}",
         _ => "",
     };
 
     public Severity WindowsUpdateSeverity => WindowsUpdate.Status switch
     {
-        WindowsUpdateStatus.Done => WindowsUpdate.Offers.Count == 0 ? Severity.Good : Severity.Warning,
+        WindowsUpdateStatus.Done => WindowsUpdateUpdates.Count == 0 ? Severity.Good : Severity.Warning,
         _ => Severity.Neutral,
     };
 
-    /// <summary>Each offer as "Title (date)", optional updates marked.</summary>
-    public IReadOnlyList<string> WindowsUpdateOfferLines => WindowsUpdate.Offers
-        .Select(o => o.Title + (o.DriverDate is { } d ? $" ({Display.Date(d)})" : "") + (o.BrowseOnly ? " · optional update" : ""))
+    /// <summary>Each offer as "Title (date) · how it installs"; BIOS repackages explained.</summary>
+    public IReadOnlyList<string> WindowsUpdateOfferLines => WindowsUpdateUpdates
+        .Select(o => OfferLine(o) + (o.BrowseOnly ? " · optional" : " · installs automatically"))
+        .Concat(WindowsUpdateSameAsBios.Select(o =>
+            OfferLine(o) + $" · same date as the installed BIOS ({Snapshot.Identity.BiosVersion}): most likely the BIOS you already have"))
         .ToList();
+
+    private static string OfferLine(WindowsUpdateOffer o) => o.Title + (o.DriverDate is { } d ? $" ({Display.Date(d)})" : "");
     public IReadOnlyList<DeviceRowViewModel> Rows { get; }
     public IReadOnlyList<SummaryTile> Tiles { get; }
     public IReadOnlyList<DeviceRowViewModel> Attention { get; }

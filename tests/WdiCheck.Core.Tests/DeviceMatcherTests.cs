@@ -191,6 +191,7 @@ public class DeviceMatcherTests
         Assert.Equal(DriverStatus.Behind, r.Status);
         Assert.Equal("26.40.3.65", r.Update?.Raw);
         Assert.Null(r.LagDays);
+        Assert.True(r.UpdateOnlyFromCatalog);   // only the Catalog lists it: some OEM's machine is offered it
     }
 
     [Fact]

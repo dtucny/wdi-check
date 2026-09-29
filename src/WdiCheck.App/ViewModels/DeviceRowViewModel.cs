@@ -1,3 +1,4 @@
+using WdiCheck.Core.Inventory;
 using WdiCheck.Core.Matching;
 using WdiCheck.Core.Reporting;
 
@@ -12,7 +13,7 @@ public sealed record LinkItem(string Title, string Detail, string Url, bool IsBo
 /// <summary>One row in the Drivers list, plus everything the detail pane shows.</summary>
 public sealed class DeviceRowViewModel
 {
-    public DeviceRowViewModel(DeviceResult r, string? boardVendor, WindowsUpdateInfo? windowsUpdate = null)
+    public DeviceRowViewModel(DeviceResult r, string? boardVendor, WindowsUpdateInfo? windowsUpdate = null, SystemIdentity? identity = null)
     {
         Result = r;
         var d = r.Device;
@@ -30,6 +31,8 @@ public sealed class DeviceRowViewModel
         NewestSource = r.Inf is { } im
             ? $"newest release of {im.Newest.InfName ?? "this INF"}"
             : r.Installed?.Line is { } l && r.Family is { } f ? $"newest {f.Name} release on the {l} line" : "";
+        if (r.UpdateOnlyFromCatalog)
+            NewestSource += (NewestSource.Length > 0 ? "; " : "") + "a newer build exists (another OEM's, via Windows Update)";
         Newest = (r.Update ?? r.Newest)?.Raw ?? "—";
         FamilyNewest = r.Family?.Water?.Version ?? "—";
         FamilyNewestDate = Display.Date(r.Family?.WaterDate);
@@ -110,27 +113,51 @@ public sealed class DeviceRowViewModel
         // What Windows Update offers this exact device: machine-targeted, unlike "newest anywhere".
         var wu = windowsUpdate ?? WindowsUpdateInfo.Off;
         var offer = wu.OfferFor(d);
-        HasWindowsUpdateOffer = offer is not null;
+        var sameAsBios = offer is not null && identity is not null && offer.MatchesInstalledBios(identity);
+        HasWindowsUpdateUpdate = offer is not null && !sameAsBios;
+        WindowsUpdateOfferIsOptional = offer?.BrowseOnly == true;
+        WindowsUpdateButtonText = WindowsUpdateOfferIsOptional ? "Open optional updates" : "Open Windows Update";
         WindowsUpdateText = wu.Status switch
         {
             WindowsUpdateStatus.Searching when r.Status != DriverStatus.NotIndexed => "Checking Windows Update…",
+            WindowsUpdateStatus.Done when sameAsBios =>
+                $"Windows Update offers firmware package {offer!.Version?.Raw ?? offer.Title}, dated {Display.Date(offer.DriverDate)}: the same date as " +
+                $"the installed BIOS ({identity!.BiosVersion}). It's most likely the BIOS you already have, packaged for Windows Update, and is offered " +
+                "because this device only has Microsoft's generic firmware driver. Installing it shouldn't change the firmware.",
             WindowsUpdateStatus.Done when offer is not null =>
                 $"Windows Update offers {offer.Version?.Raw ?? offer.Title}" +
                 (offer.DriverDate is { } od ? $" (dated {Display.Date(od)})" : "") +
-                (offer.BrowseOnly ? " as an optional update." : "."),
+                (offer.BrowseOnly ? " as an optional update." : ". Windows installs it automatically."),
+            WindowsUpdateStatus.Done when r.UpdateOnlyFromCatalog =>
+                "Windows Update offers no driver for this device. The newer build is from the Windows Update Catalog: Windows Update " +
+                "offers it to some OEM's machines, but not to this one.",
             WindowsUpdateStatus.Done when r.Status is DriverStatus.Behind =>
                 "Windows Update offers no driver for this device: the newer build isn't targeted at this machine through Windows Update. Get it from the vendor.",
             WindowsUpdateStatus.Done when r.Status is not DriverStatus.NotIndexed => "Windows Update offers no driver for this device.",
             _ => "",
         };
 
+        if (HasWindowsUpdateUpdate && r.Status != DriverStatus.Behind)
+        {
+            AttentionDetail = $"{(string.IsNullOrEmpty(Provider) ? Family : Provider)} · {Installed} → {offer!.Version?.Raw ?? "newer"} from Windows Update";
+            AttentionPill = "Windows Update";
+            AttentionSeverity = Severity.Warning;
+        }
+        else
+        {
+            AttentionDetail = $"{Family} · {Installed} → {Newest}";
+            AttentionPill = StatusText;
+            AttentionSeverity = Severity;
+        }
+
         SortKey = r.Status switch
         {
             DriverStatus.Behind => 0,
-            DriverStatus.Current => 1,
-            DriverStatus.NotComparable => 2,
-            DriverStatus.Inbox => 3,
-            _ => 4,
+            _ when HasWindowsUpdateUpdate => 1,
+            DriverStatus.Current => 2,
+            DriverStatus.NotComparable => 3,
+            DriverStatus.Inbox => 4,
+            _ => 5,
         };
     }
 
@@ -181,7 +208,16 @@ public sealed class DeviceRowViewModel
 
     public bool HasWindowsUpdateText => WindowsUpdateText.Length > 0;
 
-    public bool HasWindowsUpdateOffer { get; }
+    /// <summary>Windows Update offers this device a driver it doesn't have (not a repackaged copy of the installed BIOS).</summary>
+    public bool HasWindowsUpdateUpdate { get; }
+
+    public bool WindowsUpdateOfferIsOptional { get; }
+    public string WindowsUpdateButtonText { get; }
+
+    /// <summary>The "Needs attention" line: family · installed → newest, or the Windows Update offer.</summary>
+    public string AttentionDetail { get; }
+    public string AttentionPill { get; }
+    public Severity AttentionSeverity { get; }
     public bool HasUpdateSources => HasLinks || HasHint;
     public bool HasParallelNote => ParallelNote.Length > 0;
     public bool HasLineVersions => LineVersions.Count > 0;

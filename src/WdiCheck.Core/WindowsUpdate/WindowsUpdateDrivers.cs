@@ -40,6 +40,30 @@ public sealed record WindowsUpdateOffer
         var id = Hwid.Normalise(HardwareId);
         return device.HardwareIds.Concat(device.CompatibleIds).Any(d => Hwid.Normalise(d) == id);
     }
+
+    /// <summary>
+    /// True for a system-firmware package dated the same day as the installed BIOS: almost certainly the BIOS
+    /// already installed, repackaged as a UEFI capsule. Windows offers it anyway when the firmware device only has
+    /// Microsoft's generic driver, because the OEM package matches the device more specifically.
+    /// </summary>
+    public bool MatchesInstalledBios(SystemIdentity identity)
+    {
+        if (DriverDate is not { } date || identity.BiosReleaseDate != date)
+            return false;
+        if (!string.Equals(DriverClass, "Firmware", StringComparison.OrdinalIgnoreCase) || FirmwareResource is not { } resource)
+            return false;
+        // Without an ESRT to say which resource is the BIOS, class and date decide.
+        return identity.SystemFirmwareResources.Count == 0 || identity.SystemFirmwareResources.Contains(resource);
+    }
+
+    /// <summary>The resource GUID of a <c>UEFI\RES_{guid}</c> hardware ID.</summary>
+    public Guid? FirmwareResource =>
+        HardwareId.StartsWith(FirmwarePrefix, StringComparison.OrdinalIgnoreCase)
+        && Guid.TryParse(HardwareId.AsSpan(FirmwarePrefix.Length), out var g)
+            ? g
+            : null;
+
+    private const string FirmwarePrefix = @"UEFI\RES_";
 }
 
 public sealed record WindowsUpdateResult(IReadOnlyList<WindowsUpdateOffer> Offers, string? Error, DateTimeOffset SearchedAt, TimeSpan Duration)

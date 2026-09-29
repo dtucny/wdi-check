@@ -9,6 +9,28 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-09-29
+
+### Added
+- **Windows Update offers for devices the index doesn't know about** now appear under "Needs attention"
+  and in the Drivers list, even with in-box and unmatched devices hidden. On WILLOW, Windows Update offers
+  Lenovo's Universal Device Client driver 26.8.0.29, which is bound to a `ROOT\` ID the index doesn't collect.
+- **Catalog-only updates are labelled.** When the only listing of the newer build is the Windows Update
+  Catalog, the detail pane says "a newer build exists (another OEM's, via Windows Update)": Microsoft
+  offers it to some OEM's machines, which doesn't mean this machine will be offered it.
+- The JSON export lists which devices each Windows Update offer applies to (`applies_to`). Both exports
+  add a note per offer (`windows_update_note`: optional, installs automatically, or matches installed BIOS).
+
+### Fixed
+- **The installed BIOS counted as a Windows Update driver update.** Windows Update offers an OEM firmware
+  package when the firmware device only has Microsoft's generic driver, even if it holds the BIOS that's
+  already installed (WILLOW: Lenovo firmware 1.50.0.0, dated the same day as BIOS M3CN50WW). A
+  system-firmware offer dated the same day as the installed BIOS is now shown as "most likely the BIOS you
+  already have" and not counted. The ESRT (`HKLM\HARDWARE\UEFI\ESRT`) identifies which firmware resource is
+  the BIOS.
+- **Wrong Windows Update page.** Offers that aren't optional install automatically and are listed on the
+  main Windows Update page, not under Optional updates. The button now opens the page that lists them.
+
 ## [0.2.5] - 2026-09-29
 
 ### Added
@@ -172,7 +194,8 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
-[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/dtucny/wdi-check/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/dtucny/wdi-check/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/dtucny/wdi-check/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/dtucny/wdi-check/compare/v0.2.2...v0.2.3

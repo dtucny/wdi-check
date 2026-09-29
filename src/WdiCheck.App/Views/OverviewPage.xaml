@@ -110,8 +110,8 @@
                             <TextBlock Style="{StaticResource MutedTextStyle}"
                                        Text="What Windows Update offers this exact machine, using Microsoft's own targeting. It's the authoritative answer for drivers Windows Update supplies." />
                         </StackPanel>
-                        <Button Grid.Column="1" VerticalAlignment="Top" Content="Open optional updates" Click="OpenOptionalUpdates_Click"
-                                Visibility="{x:Bind ViewModel.View.HasWindowsUpdateOffers, Mode=OneWay, FallbackValue=Collapsed}" />
+                        <Button Grid.Column="1" VerticalAlignment="Top" Content="{x:Bind ViewModel.View.WindowsUpdateButtonText, Mode=OneWay}" Click="OpenWindowsUpdate_Click"
+                                Visibility="{x:Bind ViewModel.View.HasWindowsUpdateUpdates, Mode=OneWay, FallbackValue=Collapsed}" />
                     </Grid>
                 </Border>
 
@@ -171,11 +171,9 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Style="{StaticResource MutedTextStyle}">
-                                                    <Run Text="{x:Bind Family}" /><Run Text=" · " /><Run Text="{x:Bind Installed}" /><Run Text=" → " /><Run Text="{x:Bind Newest}" />
-                                                </TextBlock>
+                                                <TextBlock Text="{x:Bind AttentionDetail}" Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
-                                            <views:StatusPill Grid.Column="1" Text="{x:Bind StatusText}" Severity="{x:Bind Severity}" />
+                                            <views:StatusPill Grid.Column="1" Text="{x:Bind AttentionPill}" Severity="{x:Bind AttentionSeverity}" />
                                         </Grid>
                                     </Button>
                                 </DataTemplate>

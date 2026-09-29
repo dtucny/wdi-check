@@ -1,4 +1,6 @@
 using System.Text;
+using System.Text.Json;
+using WdiCheck.Core.Inventory;
 using WdiCheck.Core.Matching;
 using WdiCheck.Core.Reporting;
 using WdiCheck.Core.WindowsUpdate;
@@ -86,7 +88,73 @@ public class WindowsUpdateTests
         await ReportExporter.WriteCsvAsync(ms, [result], TestContext.Current.CancellationToken, offers);
         var lines = Encoding.UTF8.GetString(ms.ToArray()).TrimStart((char)0xFEFF).Split(Environment.NewLine);
 
-        Assert.EndsWith("windows_update_offer,windows_update_date", lines[0]);
-        Assert.EndsWith("10.80.407.2026,2026-04-07", lines[1]);
+        Assert.EndsWith("windows_update_offer,windows_update_date,windows_update_note", lines[0]);
+        Assert.EndsWith("10.80.407.2026,2026-04-07,optional", lines[1]);
+    }
+
+    // What Windows Update offered WILLOW (Lenovo Legion Slim 5 16APH8, BIOS M3CN50WW built 2026-04-23).
+    private const string WillowOffers = """
+        {"resultCode":2,"updates":[
+          {"title":"Lenovo System Driver Update (26.8.0.29)","driverDate":"2026-08-25","hardwareId":"root\\udsudcdriver",
+           "driverClass":"OtherHardware","provider":"Lenovo","browseOnly":false,"isHidden":false,"updateId":"u1"},
+          {"title":"Lenovo Ltd. Firmware Driver Update (1.50.0.0)","driverDate":"2026-04-23",
+           "hardwareId":"uefi\\res_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}","driverClass":"Firmware","provider":"Lenovo Ltd.",
+           "browseOnly":false,"isHidden":false,"updateId":"u2"}]}
+        """;
+
+    private static readonly Guid WillowBiosResource = Guid.Parse("26c22f8e-d4d3-4aa8-86bb-53eec694a356");
+
+    private static SystemIdentity Willow(DateOnly? biosDate = null, params Guid[] systemFirmware) => new()
+    {
+        SystemManufacturer = "LENOVO",
+        SystemProductName = "82Y9",
+        BiosVersion = "M3CN50WW",
+        BiosReleaseDate = biosDate ?? new DateOnly(2026, 4, 23),
+        SystemFirmwareResources = systemFirmware,
+    };
+
+    [Fact]
+    public void FirmwarePackageDatedLikeTheBiosMatchesIt()
+    {
+        var (offers, _) = WindowsUpdateDrivers.Parse(WillowOffers);
+
+        Assert.Equal("1.50.0.0", offers[1].Version?.Raw);
+        Assert.Equal(WillowBiosResource, offers[1].FirmwareResource);
+        Assert.True(offers[1].MatchesInstalledBios(Willow(systemFirmware: WillowBiosResource)));
+        Assert.True(offers[1].MatchesInstalledBios(Willow()));   // no ESRT: class and date decide
+        Assert.False(offers[0].MatchesInstalledBios(Willow()));  // not firmware
+    }
+
+    [Fact]
+    public void NewerOrOtherFirmwareIsAnUpdate()
+    {
+        var (offers, _) = WindowsUpdateDrivers.Parse(WillowOffers);
+
+        Assert.False(offers[1].MatchesInstalledBios(Willow(new DateOnly(2025, 11, 2))));       // older BIOS installed
+        Assert.False(offers[1].MatchesInstalledBios(Willow(systemFirmware: Guid.NewGuid())));  // device firmware, not the BIOS
+    }
+
+    [Fact]
+    public async Task JsonExportListsWhatEachOfferAppliesTo()
+    {
+        var (offers, _) = WindowsUpdateDrivers.Parse(WillowOffers);
+        var udc = Fixtures.Device("Universal Device Client Device", "26.7.0.7", "Lenovo", "oem182.inf", [@"ROOT\udsudcdriver"], []);
+        var firmware = Fixtures.Device("System Firmware", "10.0.26100.4768", "Microsoft", "c_firmware.inf",
+            [@"UEFI\RES_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}&REV_32"], [@"UEFI\RES_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}"]);
+        var matcher = new DeviceMatcher(Fixtures.Index());
+        using var ms = new MemoryStream();
+
+        await ReportExporter.WriteJsonAsync(ms, [matcher.Match(udc), matcher.Match(firmware)], Willow(), null, null,
+            TestContext.Current.CancellationToken, offers);
+        using var doc = JsonDocument.Parse(ms.ToArray());
+        var json = doc.RootElement.GetProperty("windows_update_offers");
+
+        Assert.False(json[0].GetProperty("matches_installed_bios").GetBoolean());
+        Assert.Equal("Universal Device Client Device", json[0].GetProperty("applies_to")[0].GetProperty("device").GetString());
+        Assert.True(json[1].GetProperty("matches_installed_bios").GetBoolean());
+        Assert.Equal("System Firmware", json[1].GetProperty("applies_to")[0].GetProperty("device").GetString());
+        var devices = doc.RootElement.GetProperty("devices");
+        Assert.Equal("installs automatically", devices[0].GetProperty("windows_update_note").GetString());
+        Assert.Equal("matches installed BIOS", devices[1].GetProperty("windows_update_note").GetString());
     }
 }
