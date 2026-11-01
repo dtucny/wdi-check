@@ -1,7 +1,8 @@
 # Builds and publishes a GitHub release when a version tag is pushed.
 #
 #   1. Set <Version> in Directory.Build.props and the Identity Version in Package.appxmanifest.
-#   2. Move CHANGELOG.md's Unreleased notes under "## [x.y.z] - date".
+#   2. Move CHANGELOG.md's Unreleased notes under "## [x.y.z] - date", with the lines
+#      ./scripts/dependency-changes.ps1 prints for shipped dependency updates.
 #   3. Commit, then: git tag -a vX.Y.Z -m "WdiCheck X.Y.Z" && git push origin main vX.Y.Z
 #
 # Re-running for an existing tag (Actions → Release → Run workflow) rebuilds and replaces the assets.
@@ -39,6 +40,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.TAG }}
+          fetch-depth: 0   # tags: the dependency check compares with the previous release
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -58,6 +60,9 @@ jobs:
 
       - name: Release notes from CHANGELOG.md
         run: ./scripts/release-notes.ps1 -Version $env:VERSION -OutFile release-notes.md
+
+      - name: Check CHANGELOG.md records dependency changes
+        run: ./scripts/dependency-changes.ps1 -Check -Version $env:VERSION
 
       - name: Build x64 (tests, unpackaged zip, MSIX)
         run: ./scripts/build.ps1 -Platform x64

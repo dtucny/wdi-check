@@ -153,6 +153,10 @@ Pushing a version tag makes GitHub Actions build and publish a release
 1. Set `<Version>` in `Directory.Build.props` and the `Identity` `Version` in
    `src/WdiCheck.App/Package.appxmanifest` (same version, plus `.0`).
 2. In `CHANGELOG.md`, move the Unreleased notes under `## [x.y.z] - yyyy-mm-dd` and add its compare link.
+   Run `./scripts/dependency-changes.ps1` and add the lines it prints under `### Dependencies`: shipped
+   dependency updates since the last tag (the .NET SDK, which sets the bundled runtime, and the
+   app's NuGet packages), whether they came from Dependabot, the outdated-packages issue or a
+   manual edit.
 3. Commit, then tag and push:
 
    ```powershell
@@ -160,7 +164,8 @@ Pushing a version tag makes GitHub Actions build and publish a release
    git push origin main v0.2.7
    ```
 
-The workflow checks that the tag matches both version numbers. It then runs the tests,
+The workflow checks that the tag matches both version numbers, and that the CHANGELOG section
+mentions every shipped dependency change. It then runs the tests,
 builds the x64 and ARM64 zips and MSIX packages with `scripts/build.ps1`, and creates the
 GitHub release with that version's `CHANGELOG.md` section as its notes
 (`scripts/release-notes.ps1 -Version x.y.z` previews them). To rebuild an existing release,
