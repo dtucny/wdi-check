@@ -1,5 +1,7 @@
 version: 2
 updates:
+  # Currently proposes nothing: the updater treats every package as incompatible with the
+  # net10.0-windows target. The "Outdated packages" workflow lists NuGet updates meanwhile.
   - package-ecosystem: nuget
     directory: /
     schedule:

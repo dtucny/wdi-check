@@ -176,9 +176,9 @@ and the MSIX installs only where its signer is trusted.
 src/WdiCheck.Core/         API client + cache, version parsing, family & INF indexes, device & board matching, export
 src/WdiCheck.App/          WinUI 3 app (MVVM, CommunityToolkit.Mvvm)
 tests/WdiCheck.Core.Tests/ xUnit tests (fixtures built from real index rows)
-scripts/                   build, release notes, dev certificate, asset generation
+scripts/                   build, release notes, outdated packages, dev certificate, asset generation
 .github/workflows/         CI build and tests on PRs and main; release build on version tags
-.github/dependabot.yml     weekly NuGet, .NET SDK and Actions updates
+.github/dependabot.yml     weekly .NET SDK and Actions updates (NuGet: see outdated-packages.yml)
 CHANGELOG.md               release notes
 ```
 

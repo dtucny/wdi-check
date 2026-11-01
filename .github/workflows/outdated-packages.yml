@@ -1,0 +1,61 @@
+# Weekly check for newer NuGet packages, kept in one issue. Dependabot's NuGet updater treats every
+# package as incompatible with the net10.0-windows target, so it never proposes these updates.
+name: Outdated packages
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'   # Mondays 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      GH_TOKEN: ${{ github.token }}
+      TITLE: Outdated NuGet packages
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: List outdated packages
+        run: ./scripts/outdated-packages.ps1 -OutFile outdated.md
+
+      - name: Open, update or close the issue
+        run: |
+          $existing = gh issue list --state open --label dependencies --search "in:title `"$env:TITLE`"" --json number,title |
+            ConvertFrom-Json | Where-Object title -eq $env:TITLE | Select-Object -First 1
+          if (-not (Test-Path outdated.md)) {
+            if ($existing) { gh issue close $existing.number --comment 'All NuGet packages are current.' }
+            'All NuGet packages are current.'
+            return
+          }
+          $body = @(
+            'Newer stable releases of the NuGet packages WdiCheck references. Updated weekly by the'
+            '[Outdated packages](../blob/main/.github/workflows/outdated-packages.yml) workflow and closed'
+            'when everything is current. Update the Windows App SDK packages together; run'
+            '`./scripts/outdated-packages.ps1` locally to check.'
+            ''
+            (Get-Content outdated.md -Raw)
+          ) -join "`n"
+          Set-Content body.md $body -Encoding utf8NoBOM
+          gh label create dependencies --color 0366d6 --description 'Dependency updates' --force | Out-Null
+          if ($existing) {
+            gh issue edit $existing.number --body-file body.md
+          } else {
+            gh issue create --title $env:TITLE --label dependencies --body-file body.md
+          }
+          Get-Content outdated.md
