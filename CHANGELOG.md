@@ -9,6 +9,32 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-11-01
+
+### Added
+- **"This machine" covers more than the board.** Below the BIOS, the Overview lists the processor
+  (with its chipset driver) and each GPU, with the driver's status. A GPU is labelled built-in or by
+  card maker ("MSI card") from its PCI subsystem ID. Where WinDriverIndex lists the chip vendor's own
+  release (AMD, NVIDIA, Intel, Realtek), the row shows it with a download link, and says when it's
+  numbered differently from the installed driver: AMD's chipset package 8.09.28.1124 holds drivers
+  numbered 3.0.5.0. For graphics, the release shown is the newest of the chip vendor's own INFs
+  that binds the GPU: AMD's 26.10.2 is 32.0.32015.12012 for RDNA3/4 but 32.0.21045.20006 for
+  RDNA2 and Ryzen 7000 iGPUs. "All components" expands to every other driver family on the PC.
+  Clicking a row opens the device in Drivers.
+- The Overview header names the CPU and any add-in GPU after the board.
+- Uses the INF rows WinDriverIndex now extracts from NVIDIA's, AMD's and Intel's own graphics
+  installers (data 2.0.x, 2026-11-01), so a driver installed from the chip vendor compares like any
+  other: a PC on NVIDIA 621.01 is current, not "newer than index".
+
+### Changed
+- **The Windows Update search no longer starts PowerShell.** WdiCheck now calls the Windows Update
+  Agent's COM API directly, through CsWin32's marshalling-free bindings, which work in the trimmed build.
+  Machines that block or flag `powershell.exe -EncodedCommand` (AppLocker, WDAC, Constrained Language
+  Mode, Defender attack-surface rules) can now run the search, and it no longer looks like a script
+  launcher to security tools. Cancelling or timing out now asks the agent to abort, where the old code
+  killed the PowerShell process. Common failures are explained: the service is disabled, policy blocks
+  Windows Update, or there's no network.
+
 ## [0.2.6] - 2026-09-29
 
 ### Added
@@ -194,7 +220,8 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
-[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/dtucny/wdi-check/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/dtucny/wdi-check/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/dtucny/wdi-check/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/dtucny/wdi-check/compare/v0.2.3...v0.2.4

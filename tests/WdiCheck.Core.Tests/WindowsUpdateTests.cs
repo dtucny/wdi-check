@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using WdiCheck.Core.Inventory;
@@ -9,23 +10,22 @@ namespace WdiCheck.Core.Tests;
 
 public class WindowsUpdateTests
 {
-    // Shape of the search script's output (see WindowsUpdateDrivers.Script).
-    private const string TwoOffers = """
-        {"resultCode":2,"updates":[
-          {"title":"Realtek Semiconductor Corp. - Net - 10.80.407.2026","driverDate":"2026-04-07",
-           "hardwareId":"PCI\\VEN_10EC&DEV_8125&SUBSYS_7D731462","driverClass":"Net","provider":"Realtek","manufacturer":"Realtek",
-           "model":"Realtek Gaming 2.5GbE Family Controller","browseOnly":true,"isHidden":false,"updateId":"a1b2"},
-          {"title":"Advanced Micro Devices, Inc. - System - 5.44.0.0","driverDate":"2026-03-16",
-           "hardwareId":"PCI\\VEN_1022&DEV_1649","driverClass":"System","provider":"AMD","manufacturer":"AMD",
-           "model":"AMD PSP 11.0 Device","browseOnly":false,"isHidden":false,"updateId":"c3d4"}]}
-        """;
+    private static readonly List<WindowsUpdateOffer> TwoOffers = Offers(
+        new("Realtek Semiconductor Corp. - Net - 10.80.407.2026", new DateTime(2026, 4, 7),
+            @"PCI\VEN_10EC&DEV_8125&SUBSYS_7D731462", "Net", "Realtek", "Realtek", "Realtek Gaming 2.5GbE Family Controller",
+            BrowseOnly: true, IsHidden: false, "a1b2"),
+        new("Advanced Micro Devices, Inc. - System - 5.44.0.0", new DateTime(2026, 3, 16),
+            @"PCI\VEN_1022&DEV_1649", "System", "AMD", "AMD", "AMD PSP 11.0 Device",
+            BrowseOnly: false, IsHidden: false, "c3d4"));
+
+    private static List<WindowsUpdateOffer> Offers(params AgentDriverUpdate[] updates) =>
+        updates.Select(WindowsUpdateDrivers.ToOffer).ToList();
 
     [Fact]
-    public void ParsesOffers()
+    public void MapsAgentUpdatesToOffers()
     {
-        var (offers, error) = WindowsUpdateDrivers.Parse(TwoOffers);
+        var offers = TwoOffers;
 
-        Assert.Null(error);
         Assert.Equal(2, offers.Count);
         Assert.Equal("10.80.407.2026", offers[0].Version?.Raw);
         Assert.Equal(new DateOnly(2026, 4, 7), offers[0].DriverDate);
@@ -34,27 +34,28 @@ public class WindowsUpdateTests
     }
 
     [Fact]
-    public void NoOffersIsSuccess()
+    public void MissingFieldsMapToEmptyOrNull()
     {
-        var (offers, error) = WindowsUpdateDrivers.Parse("""{"resultCode":2,"updates":[]}""");
-        Assert.Null(error);
-        Assert.Empty(offers);
+        var offer = WindowsUpdateDrivers.ToOffer(new AgentDriverUpdate(null, null, null, null, null, null, null, false, false, null));
+
+        Assert.Equal("", offer.Title);
+        Assert.Equal("", offer.HardwareId);
+        Assert.Null(offer.Version);
+        Assert.Null(offer.DriverDate);
     }
 
-    [Fact]
-    public void ScriptErrorIsReported()
-    {
-        var (offers, error) = WindowsUpdateDrivers.Parse("""{"error":"The service cannot be started (0x80070422)"}""");
-        Assert.Empty(offers);
-        Assert.Contains("0x80070422", error);
-    }
+    [Theory]
+    [InlineData(0x80070422, "The Windows Update service is disabled. (0x80070422)")]
+    [InlineData(0x8024402C, "Couldn't reach Windows Update. Check the network connection. (0x8024402C)")]
+    [InlineData(0x8024500C, "Policy on this PC blocks searching Windows Update directly. (0x8024500C)")]
+    public void KnownErrorsAreExplained(uint hresult, string expected) =>
+        Assert.Equal(expected, WindowsUpdateDrivers.Describe(new COMException("Exception from HRESULT", unchecked((int)hresult))));
 
-    [Fact]
-    public void GarbageOutputIsAnError()
-    {
-        var (_, error) = WindowsUpdateDrivers.Parse("New-Object : Cannot create COM object");
-        Assert.StartsWith("Unexpected output", error);
-    }
+    [Theory]
+    [InlineData("Something broke", "Something broke (0x80240FFF)")]
+    [InlineData("Exception from HRESULT: 0x80240FFF", "Exception from HRESULT: 0x80240FFF")]
+    public void OtherErrorsKeepTheirCodeOnce(string message, string expected) =>
+        Assert.Equal(expected, WindowsUpdateDrivers.Describe(new COMException(message, unchecked((int)0x80240FFF))));
 
     [Theory]
     [InlineData("Realtek Semiconductor Corp. - Net - 10.80.407.2026", "10.80.407.2026")]
@@ -68,7 +69,7 @@ public class WindowsUpdateTests
     [Fact]
     public void OfferMatchesDeviceByHardwareOrCompatibleId()
     {
-        var (offers, _) = WindowsUpdateDrivers.Parse(TwoOffers);
+        var offers = TwoOffers;
         var nic = Fixtures.Rtl8125();
         var psp = Fixtures.Device("AMD PSP 11.0 Device", "5.43.0.0", "AMD", "oem102.inf",
             [@"PCI\VEN_1022&DEV_1649&SUBSYS_7D731462&REV_00"], [@"PCI\VEN_1022&DEV_1649&REV_00", @"pci\ven_1022&dev_1649"]);
@@ -81,7 +82,7 @@ public class WindowsUpdateTests
     [Fact]
     public async Task ExportIncludesTheOffer()
     {
-        var (offers, _) = WindowsUpdateDrivers.Parse(TwoOffers);
+        var offers = TwoOffers;
         var result = new DeviceMatcher(Fixtures.Index()).Match(Fixtures.Rtl8125());
         using var ms = new MemoryStream();
 
@@ -93,14 +94,12 @@ public class WindowsUpdateTests
     }
 
     // What Windows Update offered WILLOW (Lenovo Legion Slim 5 16APH8, BIOS M3CN50WW built 2026-04-23).
-    private const string WillowOffers = """
-        {"resultCode":2,"updates":[
-          {"title":"Lenovo System Driver Update (26.8.0.29)","driverDate":"2026-08-25","hardwareId":"root\\udsudcdriver",
-           "driverClass":"OtherHardware","provider":"Lenovo","browseOnly":false,"isHidden":false,"updateId":"u1"},
-          {"title":"Lenovo Ltd. Firmware Driver Update (1.50.0.0)","driverDate":"2026-04-23",
-           "hardwareId":"uefi\\res_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}","driverClass":"Firmware","provider":"Lenovo Ltd.",
-           "browseOnly":false,"isHidden":false,"updateId":"u2"}]}
-        """;
+    private static readonly List<WindowsUpdateOffer> WillowOffers = Offers(
+        new("Lenovo System Driver Update (26.8.0.29)", new DateTime(2026, 8, 25), @"root\udsudcdriver",
+            "OtherHardware", "Lenovo", null, null, BrowseOnly: false, IsHidden: false, "u1"),
+        new("Lenovo Ltd. Firmware Driver Update (1.50.0.0)", new DateTime(2026, 4, 23),
+            @"uefi\res_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}", "Firmware", "Lenovo Ltd.", null, null,
+            BrowseOnly: false, IsHidden: false, "u2"));
 
     private static readonly Guid WillowBiosResource = Guid.Parse("26c22f8e-d4d3-4aa8-86bb-53eec694a356");
 
@@ -116,7 +115,7 @@ public class WindowsUpdateTests
     [Fact]
     public void FirmwarePackageDatedLikeTheBiosMatchesIt()
     {
-        var (offers, _) = WindowsUpdateDrivers.Parse(WillowOffers);
+        var offers = WillowOffers;
 
         Assert.Equal("1.50.0.0", offers[1].Version?.Raw);
         Assert.Equal(WillowBiosResource, offers[1].FirmwareResource);
@@ -128,7 +127,7 @@ public class WindowsUpdateTests
     [Fact]
     public void NewerOrOtherFirmwareIsAnUpdate()
     {
-        var (offers, _) = WindowsUpdateDrivers.Parse(WillowOffers);
+        var offers = WillowOffers;
 
         Assert.False(offers[1].MatchesInstalledBios(Willow(new DateOnly(2025, 11, 2))));       // older BIOS installed
         Assert.False(offers[1].MatchesInstalledBios(Willow(systemFirmware: Guid.NewGuid())));  // device firmware, not the BIOS
@@ -137,7 +136,7 @@ public class WindowsUpdateTests
     [Fact]
     public async Task JsonExportListsWhatEachOfferAppliesTo()
     {
-        var (offers, _) = WindowsUpdateDrivers.Parse(WillowOffers);
+        var offers = WillowOffers;
         var udc = Fixtures.Device("Universal Device Client Device", "26.7.0.7", "Lenovo", "oem182.inf", [@"ROOT\udsudcdriver"], []);
         var firmware = Fixtures.Device("System Firmware", "10.0.26100.4768", "Microsoft", "c_firmware.inf",
             [@"UEFI\RES_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}&REV_32"], [@"UEFI\RES_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}"]);

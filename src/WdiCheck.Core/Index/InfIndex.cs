@@ -32,6 +32,10 @@ public sealed class InfRelease
     public DateOnly? DriverDate { get; }
 
     public DateOnly? FirstPublished { get; }
+
+    /// <summary>From the chip vendor's own installer rather than a board vendor's package.</summary>
+    public bool IsFromSilicon => Row.Sources?.Contains("silicon", StringComparer.OrdinalIgnoreCase) == true;
+
     public IReadOnlyList<Artefact> Artefacts { get; }
     public IReadOnlySet<string> Hwids { get; }
 }
@@ -48,21 +52,27 @@ public sealed class InfIndex
 {
     private readonly Dictionary<string, List<InfRelease>> _byName;
     private readonly Dictionary<string, List<InfRelease>> _byHwid;
+    private readonly HashSet<int> _siliconFamilies;
 
-    private InfIndex(Dictionary<string, List<InfRelease>> byName, Dictionary<string, List<InfRelease>> byHwid, int count)
+    private InfIndex(Dictionary<string, List<InfRelease>> byName, Dictionary<string, List<InfRelease>> byHwid, HashSet<int> siliconFamilies, int count)
     {
         _byName = byName;
         _byHwid = byHwid;
+        _siliconFamilies = siliconFamilies;
         Count = count;
     }
 
     public int Count { get; }
+
+    /// <summary>True when the chip vendor's own installer for the family was unpacked, so its INFs say which devices it covers.</summary>
+    public bool HasSiliconRows(int familyId) => _siliconFamilies.Contains(familyId);
 
     public static InfIndex Build(IEnumerable<InfRow> rows, IEnumerable<Artefact> artefacts)
     {
         var artefactById = artefacts.GroupBy(a => a.ArtefactId).ToDictionary(g => g.Key, g => g.First());
         var byName = new Dictionary<string, List<InfRelease>>(StringComparer.OrdinalIgnoreCase);
         var byHwid = new Dictionary<string, List<InfRelease>>(StringComparer.Ordinal);
+        var siliconFamilies = new HashSet<int>();
         var count = 0;
         foreach (var row in rows)
         {
@@ -71,6 +81,8 @@ public sealed class InfIndex
             if (!release.Version.IsParsed)
                 continue;
             count++;
+            if (release.IsFromSilicon)
+                siliconFamilies.UnionWith(row.FamilyIds);
             if (!string.IsNullOrEmpty(row.InfName))
                 Add(byName, row.InfName, release);
             foreach (var h in release.Hwids)
@@ -80,7 +92,7 @@ public sealed class InfIndex
             }
         }
 
-        return new InfIndex(byName, byHwid, count);
+        return new InfIndex(byName, byHwid, siliconFamilies, count);
     }
 
     public IReadOnlyList<InfRelease> ByName(string infName) => _byName.GetValueOrDefault(infName) ?? [];

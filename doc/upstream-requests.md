@@ -3,7 +3,7 @@
 Problems found in the [WinDriverIndex](https://windriverindex.tucny.com/) data while building
 WdiCheck, and the changes requested. WdiCheck works around each open item until the index changes.
 
-Last reviewed 2026-09-29, against data schema 2.0.x (publish of 2026-09-28).
+Last reviewed 2026-11-01, against data schema 2.0.x (publish of 2026-11-01).
 
 ## Status
 
@@ -15,6 +15,8 @@ Last reviewed 2026-09-29, against data schema 2.0.x (publish of 2026-09-28).
 | 9 | [Families with no HWIDs](#9-families-with-no-hwids-and-17-lenovo-inf-contents) | **Open** (crawler job) | Shows those families on the board page only |
 | 17 | [Lenovo INF contents](#9-families-with-no-hwids-and-17-lenovo-inf-contents) (e.g. `hdxacplv.inf`) | **Open** (same crawler job as #9) | Falls back to package-level comparison |
 | 14 | [Year-numbered `mtkwl6ex.inf` INF rows](#14-year-numbered-mediatek-inf-rows) | **Open** (payloads needed) | Year-numbered listings are routed and compared within their own line; INF-level comparison waits for rows |
+| 19 | INF rows for silicon-vendor releases | Done (2026-11-01: NVIDIA, AMD, Intel Arc/Iris graphics; rows have `sources: ["silicon"]`) | Used: a GPU's chip-vendor release is the newest silicon INF row binding it, never the family's newest |
+| 18 | PCI match keys on graphics cards | Partly done (2026-11-01: `pci.device`, `pci.subsys_vendor`); card model not available from any source | Not used: a match would be "one of MSI's 20 RTX 4070 Ti cards", and they all get the chip vendor's driver. Names the card maker from the PCI subsystem vendor |
 | 16 | BIOS version in `by-board` | Done (2026-09-29: `last_bios_version`, `last_bios_version_date`) | Used: compared with SMBIOS `BIOSVersion` (tolerating vendor formats such as MSI `7D73v1L3` for `1.L3`); shown as installed → newest like a driver update |
 | 5 | JSON body and short TTL for 404s | Done (Cloudflare rule: `{"error":"not_found"}`, `max-age=300`) | Treats any 404 as "not indexed"; never parses the body |
 | 1 | `by-hwid` kept only the last family written | Done (2.0.0, breaking) | Not affected; WdiCheck doesn't use `by-hwid` |
@@ -35,10 +37,17 @@ Last reviewed 2026-09-29, against data schema 2.0.x (publish of 2026-09-28).
 
 ### 9. Families with no HWIDs, and 17. Lenovo INF contents
 
-16 families have empty `hwids`, so they can't be matched to devices. Lenovo's customised INFs,
+21 families have empty `hwids`, so they can't be matched to devices. Six are `(preinstall)` variants
+that pool their HWIDs with the full family by design, so 15 are really empty; two of those
+(`USB-C Connector Manager`, `Intel WAPI`) are Dell-only, and Dell's installers yield no INFs. Lenovo's customised INFs,
 such as `hdxacplv.inf` for Realtek audio, have no `infs.json` rows. Both happen because HP and
 Lenovo packages are indexed from catalogue metadata only, never downloaded. The maintainer
-plans to fetch those payloads in a later crawler run.
+plans to fetch those payloads in a later crawler run. Sizing (2026-11-01): HP is 382 softpaqs
+(14.8 GB) for the newest package per family plus unassigned ones; Lenovo is 1,108 packages, whose
+payload URLs sit in descriptor XML the crawler doesn't parse yet.
+
+Related: Intel's Wi-Fi, Bluetooth and chipset installers are WiX Burn bundles that the INF extractor
+can't unpack yet, so those families have only board vendors' INF rows (#19, round 4 in the history).
 
 ### 14. Year-numbered MediaTek INF rows
 
@@ -50,6 +59,37 @@ compared INF-to-INF. The fix needs the Lenovo or Windows Update payloads (same c
 ---
 
 ## History
+
+<details>
+<summary>Round 4 (2026-11-01): the "This machine" summary (#18 partly done, #19 done)</summary>
+
+- **INF rows for silicon-vendor releases (#19).** Releases from the `silicon` source had no
+  `infs.json` rows. NVIDIA's `621.01` (INF DriverVer `32.0.16.2101`) was listed, but the newest
+  `nv_disp*.inf` row was 616.92, so a PC on 621.01 was "newer than index". For AMD, WdiCheck
+  couldn't tell whether the newest release, `32.0.32015.12012`, covered this PC's Raphael iGPU
+  (`DEV_164E`). *Resolution:* each silicon page's installer is downloaded and its INFs extracted,
+  as rows with `sources: ["silicon"]`, a `driver_date`, `first_published` = the release date, and
+  no `artefact_ids`. Covered: NVIDIA, AMD and Intel Arc/Iris graphics; Intel's Wi-Fi, Bluetooth and
+  chipset installers are WiX Burn bundles that aren't unpacked yet. AMD 26.10.2 is two branches in
+  two installers: `…-win11-b.exe` is `32.0.32015.12012` (`u0205499.inf`: RDNA3/4, e.g. the 780M's
+  `DEV_15BF`), and `…-win11-a.exe` is `32.0.21045.20006` (`u0205498.inf`: RDNA2 and Raphael). So the
+  family's newest doesn't cover `DEV_164E`. For AMD graphics, compare against the newest `u*.inf`
+  row binding the device, never the family water. WdiCheck had counted an installed build the
+  family lists as current; that workaround is removed, because it would be wrong for AMD `-a`
+  devices.
+- **PCI match keys on graphics cards (#18).** The 1,353 `graphics-card` entries had no match keys.
+  This PC's card reports `PCI\VEN_10DE&DEV_2782&SUBSYS_51301462`: chip RTX 4070 Ti, maker MSI
+  (`1462`), model `5130`, which GPU-Z resolves to the Ventus 3X OC. Requested: `pci` with device,
+  subsystem and boost-clock keys. *Resolution:* every card now has
+  `"pci": {"device": ["10DE:2782"], "subsys_vendor": "1462"}`, from the display INFs' own device
+  names. Where one AMD device ID is several chips, the revision is appended (`1002:744C:C8` is the
+  RX 7900 XTX). The card model (`subsys`) isn't published: pci.ids has no subsystem entries for
+  `10DE:2782`, NVIDIA's INFs name every partner ID "RTX 4070 Ti", and VBIOS downloads cover only
+  about 330 of 1,353 cards. Without it a boost clock separates nothing, so it isn't added either.
+- **Also fixed:** AMD's own chipset release was stuck at 8.08.12.551 since late September, because
+  AMD renamed the installer to lower case. It's now 8.09.28.1124.
+
+</details>
 
 <details>
 <summary>Round 3 (2026-09-29): from WILLOW, checked against Lenovo Vantage (#16 done, #17 open)</summary>

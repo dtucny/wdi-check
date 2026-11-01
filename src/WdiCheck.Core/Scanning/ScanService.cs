@@ -18,6 +18,10 @@ public sealed record DataFreshness(string? IndexGenerated, DateTimeOffset Fetche
 public sealed record ScanSnapshot
 {
     public required DriverIndex Index { get; init; }
+
+    /// <summary>INF-level index; null on mirrors older than schema 2.0.0.</summary>
+    public InfIndex? Infs { get; init; }
+
     public required IReadOnlyList<Board> Boards { get; init; }
     public required IReadOnlyList<DeviceResult> Results { get; init; }
     public required SystemIdentity Identity { get; init; }
@@ -104,6 +108,7 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
         var snapshot = new ScanSnapshot
         {
             Index = index,
+            Infs = infIndex,
             Boards = boards.Value.Data,
             Results = results,
             Identity = identity,

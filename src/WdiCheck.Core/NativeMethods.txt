@@ -1,0 +1,15 @@
+// Windows Update Agent (wuapi.h), for WindowsUpdate/WindowsUpdateAgent.cs.
+UpdateSession
+IUpdateSession
+IUpdateSearcher
+ISearchJob
+ISearchCompletedCallback
+ISearchResult
+IUpdateCollection
+IUpdate3
+IWindowsDriverUpdate
+IUpdateIdentity
+CoInitializeEx
+CoUninitialize
+S_OK
+E_NOINTERFACE

@@ -1,8 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using WdiCheck.Core.Index;
 using WdiCheck.Core.Inventory;
@@ -77,48 +73,19 @@ public interface IWindowsUpdateDriverSource
 }
 
 /// <summary>
-/// Asks the Windows Update Agent which drivers it offers this machine: <c>Microsoft.Update.Session</c>,
+/// Asks the Windows Update Agent which drivers it offers this machine: an <c>UpdateSession</c> searcher,
 /// searched with <c>IsInstalled=0 and Type='Driver'</c> against Windows Update. Unlike a Catalog search, this
 /// applies Microsoft's machine-specific targeting — the authoritative answer for anything Windows Update supplies.
 /// Searching needs no elevation and installs nothing.
 /// <para>
-/// Runs out of process in Windows PowerShell: the trimmed app has built-in COM interop disabled, and a separate
-/// process lets a slow or stuck search (it can take a minute) be abandoned cleanly.
+/// The search runs on its own thread (see <see cref="WindowsUpdateAgent"/>). A slow or stuck search (it can take a
+/// minute) is abandoned on cancellation or timeout: the result returns at once, and the thread aborts the search
+/// and winds down in the background.
 /// </para>
 /// </summary>
 public sealed partial class WindowsUpdateDrivers : IWindowsUpdateDriverSource
 {
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(3);
-
-    // ServerSelection 2 = ssWindowsUpdate: ask Windows Update itself even on a WSUS-managed machine.
-    // Output is one JSON object: { "updates": [...] } or { "error": "..." }.
-    internal const string Script = """
-        $ErrorActionPreference = 'Stop'
-        try {
-            $session = New-Object -ComObject Microsoft.Update.Session
-            $session.ClientApplicationID = 'WdiCheck'
-            $searcher = $session.CreateUpdateSearcher()
-            $searcher.ServerSelection = 2
-            $result = $searcher.Search("IsInstalled=0 and Type='Driver'")
-            $list = @(foreach ($u in $result.Updates) {
-                [ordered]@{
-                    title = [string]$u.Title
-                    driverDate = if ($u.DriverVerDate) { ([datetime]$u.DriverVerDate).ToString('yyyy-MM-dd') } else { $null }
-                    hardwareId = [string]$u.DriverHardwareID
-                    driverClass = [string]$u.DriverClass
-                    provider = [string]$u.DriverProvider
-                    manufacturer = [string]$u.DriverManufacturer
-                    model = [string]$u.DriverModel
-                    browseOnly = [bool]$u.BrowseOnly
-                    isHidden = [bool]$u.IsHidden
-                    updateId = [string]$u.Identity.UpdateID
-                }
-            })
-            ConvertTo-Json -InputObject ([ordered]@{ resultCode = [int]$result.ResultCode; updates = $list }) -Depth 4 -Compress
-        } catch {
-            ConvertTo-Json -InputObject ([ordered]@{ error = ('{0} (0x{1:X8})' -f $_.Exception.Message, $_.Exception.HResult) }) -Compress
-        }
-        """;
 
     public TimeSpan Timeout { get; init; } = DefaultTimeout;
 
@@ -126,91 +93,80 @@ public sealed partial class WindowsUpdateDrivers : IWindowsUpdateDriverSource
     {
         var started = DateTimeOffset.Now;
         var sw = Stopwatch.StartNew();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(Timeout);
         try
         {
-            var json = await RunScriptAsync(ct).ConfigureAwait(false);
-            var (offers, error) = Parse(json);
-            return new WindowsUpdateResult(offers, error, started, sw.Elapsed);
+            var updates = await SearchOnOwnThreadAsync(timeout.Token).ConfigureAwait(false);
+            return new WindowsUpdateResult(updates.Select(ToOffer).ToList(), null, started, sw.Elapsed);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             return new WindowsUpdateResult([], $"Windows Update didn't answer within {Timeout.TotalMinutes:0} minutes.", started, sw.Elapsed);
         }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return new WindowsUpdateResult([], $"Couldn't start the Windows Update search: {ex.Message}", started, sw.Elapsed);
+            return new WindowsUpdateResult([], Describe(ex), started, sw.Elapsed);
         }
     }
 
-    private async Task<string> RunScriptAsync(CancellationToken ct)
+    private static Task<List<AgentDriverUpdate>> SearchOnOwnThreadAsync(CancellationToken ct)
     {
-        var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"WindowsPowerShell\v1.0\powershell.exe");
-        var psi = new ProcessStartInfo(powershell)
+        var tcs = new TaskCompletionSource<List<AgentDriverUpdate>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Completes at once on cancellation; the thread finishes aborting on its own.
+        var registration = ct.Register(() => tcs.TrySetCanceled(ct));
+        var thread = new Thread(() =>
         {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
+            try
+            {
+                tcs.TrySetResult(WindowsUpdateAgent.SearchDrivers(ct));
+            }
+            catch (Exception ex)
+            {
+                tcs.TrySetException(ex);
+            }
+            finally
+            {
+                registration.Dispose();
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Windows Update search",
         };
-        foreach (var arg in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", Encode(Script) })
-            psi.ArgumentList.Add(arg);
-
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException("powershell.exe did not start.");
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(Timeout);
-        try
-        {
-            var stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
-            var stderr = process.StandardError.ReadToEndAsync(timeout.Token);
-            await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
-            var output = (await stdout.ConfigureAwait(false)).Trim();
-            if (output.Length == 0)
-                throw new InvalidOperationException((await stderr.ConfigureAwait(false)).Trim() is { Length: > 0 } e ? e : "no output");
-            return output;
-        }
-        catch (OperationCanceledException)
-        {
-            try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
-            throw;
-        }
+        thread.Start();
+        return tcs.Task;
     }
 
-    // -EncodedCommand takes base64 of UTF-16LE, which sidesteps all quoting.
-    private static string Encode(string script) => Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
-
-    internal static (IReadOnlyList<WindowsUpdateOffer> Offers, string? Error) Parse(string json)
+    internal static WindowsUpdateOffer ToOffer(AgentDriverUpdate u) => new()
     {
-        ScriptOutput? output;
-        try
-        {
-            output = JsonSerializer.Deserialize(json, WindowsUpdateJsonContext.Default.ScriptOutput);
-        }
-        catch (JsonException ex)
-        {
-            return ([], $"Unexpected output from the Windows Update search: {ex.Message}");
-        }
+        Title = u.Title ?? "",
+        Version = VersionFromTitle(u.Title),
+        DriverDate = u.DriverVerDate is { } d ? DateOnly.FromDateTime(d) : null,
+        HardwareId = u.HardwareId ?? "",
+        DriverClass = u.DriverClass,
+        Provider = u.Provider,
+        Manufacturer = u.Manufacturer,
+        Model = u.Model,
+        BrowseOnly = u.BrowseOnly,
+        IsHidden = u.IsHidden,
+        UpdateId = u.UpdateId,
+    };
 
-        if (output is null)
-            return ([], "No output from the Windows Update search.");
-        if (!string.IsNullOrWhiteSpace(output.Error))
-            return ([], output.Error);
-
-        var offers = (output.Updates ?? []).Select(u => new WindowsUpdateOffer
+    /// <summary>A failed search as one line, keeping the HRESULT for anyone looking it up.</summary>
+    internal static string Describe(Exception ex)
+    {
+        var code = $"0x{ex.HResult:X8}";
+        var text = unchecked((uint)ex.HResult) switch
         {
-            Title = u.Title ?? "",
-            Version = VersionFromTitle(u.Title),
-            DriverDate = DateOnly.TryParseExact(u.DriverDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null,
-            HardwareId = u.HardwareId ?? "",
-            DriverClass = u.DriverClass,
-            Provider = u.Provider,
-            Manufacturer = u.Manufacturer,
-            Model = u.Model,
-            BrowseOnly = u.BrowseOnly,
-            IsHidden = u.IsHidden,
-            UpdateId = u.UpdateId,
-        }).ToList();
-        return (offers, null);
+            0x80070422 => "The Windows Update service is disabled.",
+            // WU_E_WU_DISABLED, WU_E_REDIRECTOR_CONNECT_POLICY
+            0x8024002E or 0x8024500C => "Policy on this PC blocks searching Windows Update directly.",
+            // WU_E_PT_WINHTTP_NAME_NOT_RESOLVED, and WinHTTP's own timeout and connection errors
+            0x8024402C or 0x80072EE2 or 0x80072EE7 or 0x80072EFD => "Couldn't reach Windows Update. Check the network connection.",
+            _ => ex.Message,
+        };
+        return text.Contains(code, StringComparison.OrdinalIgnoreCase) ? text : $"{text} ({code})";
     }
 
     /// <summary>"Realtek Semiconductor Corp. - Net - 10.80.407.2026" → 10.80.407.2026 (the last " - " segment).</summary>
@@ -231,31 +187,4 @@ public sealed partial class WindowsUpdateDrivers : IWindowsUpdateDriverSource
 
     [GeneratedRegex(@"\d+(?:\.\d+){2,}")]
     private static partial Regex DottedRegex();
-
-    internal sealed class ScriptOutput
-    {
-        public int? ResultCode { get; init; }
-        public string? Error { get; init; }
-        public List<ScriptUpdate>? Updates { get; init; }
-    }
-
-    internal sealed class ScriptUpdate
-    {
-        public string? Title { get; init; }
-        public string? DriverDate { get; init; }
-        public string? HardwareId { get; init; }
-        public string? DriverClass { get; init; }
-        public string? Provider { get; init; }
-        public string? Manufacturer { get; init; }
-        public string? Model { get; init; }
-        public bool BrowseOnly { get; init; }
-        public bool IsHidden { get; init; }
-        public string? UpdateId { get; init; }
-    }
-}
-
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-[JsonSerializable(typeof(WindowsUpdateDrivers.ScriptOutput))]
-internal partial class WindowsUpdateJsonContext : JsonSerializerContext
-{
 }

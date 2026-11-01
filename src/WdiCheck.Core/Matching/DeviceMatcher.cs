@@ -222,6 +222,14 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
             .SelectMany(r => r.Artefacts)
             .DistinctBy(a => a.ArtefactId)
             .ToList();
+        // INFs from a chip vendor's own installer carry no artefacts: link the vendor's listing published that day.
+        if (sameBuild.Count == 0 && newest.IsFromSilicon && family is not null)
+        {
+            sameBuild = family.Versions.SelectMany(v => v.Artefacts)
+                .Where(a => a.IsBeta == 0 && a.Vendor.Equals("silicon", StringComparison.OrdinalIgnoreCase)
+                            && FamilyInfo.ParseDate(a.ReleaseDate) == newest.FirstPublished)
+                .ToList();
+        }
         var newestRef = VersionRef.From(newest) with { Artefacts = sameBuild, InfName = newest.InfName };
 
         if (installed < newest.Version)

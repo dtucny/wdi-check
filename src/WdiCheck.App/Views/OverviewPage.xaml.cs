@@ -37,6 +37,16 @@ public sealed partial class OverviewPage : Page
         }
     }
 
+    private void Hardware_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: HardwareRowViewModel row })
+        {
+            ViewModel.StatusFilter = row.Filter;
+            ViewModel.SearchText = row.SearchName;
+            App.Window.NavigateTo("drivers");
+        }
+    }
+
     private void Board_Click(object sender, RoutedEventArgs e) => App.Window.NavigateTo("board");
 
     private async void OpenWindowsUpdate_Click(object sender, RoutedEventArgs e) =>

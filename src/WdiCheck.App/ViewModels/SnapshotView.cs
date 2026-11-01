@@ -12,7 +12,7 @@ public sealed record BoardFamilyItem(
     string Installed, string LagText, Severity LagSeverity, bool UpstreamOnly, string SameLineNote);
 
 /// <summary>Everything the pages display, computed once per scan (or board change).</summary>
-public sealed class SnapshotView
+public sealed partial class SnapshotView
 {
     public SnapshotView(ScanSnapshot s, WindowsUpdateInfo? windowsUpdate = null)
     {
@@ -146,7 +146,36 @@ public sealed class SnapshotView
 
         Candidates = s.BoardCandidates;
         ShowCandidates = s.SelectedBoard is null && s.BoardCandidates.Count > 0;
+
+        // Hardware as the drivers relate to it: processor and GPUs always, everything else on request.
+        var rowFor = Rows.ToDictionary(r => r.Result);
+        var machine = MachineHardware.Build(s.Identity, s.Results, s.Infs);
+        var hardware = machine
+            .Select(h => (h.IsCore, Row: new HardwareRowViewModel(h, h.Driver is { } d ? rowFor.GetValueOrDefault(d) : null)))
+            .ToList();
+        CoreHardware = hardware.Where(h => h.IsCore).Select(h => h.Row).ToList();
+        MoreHardware = hardware.Where(h => !h.IsCore).Select(h => h.Row).ToList();
+
+        // Overview header: the board, then the CPU and any GPU that isn't built in (an iGPU's name adds nothing).
+        var cpu = s.Identity.ProcessorName is { } p ? CoreCountSuffix().Replace(p, "") : null;
+        var cards = machine
+            .Where(h => h.Component == "graphics" && h.Detail != "built-in")
+            .Select(h => h.Name);
+        MachineText = string.Join(" · ", new[] { IdentityText, cpu }.Concat(cards).Where(x => !string.IsNullOrWhiteSpace(x)));
     }
+
+    /// <summary>"…8-Core Processor" on AMD brand strings, which the header can do without.</summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"\s+\d+-Core Processor\s*$")]
+    private static partial System.Text.RegularExpressions.Regex CoreCountSuffix();
+
+    /// <summary>The Overview header: board identity, CPU and add-in GPUs.</summary>
+    public string MachineText { get; }
+
+    public IReadOnlyList<HardwareRowViewModel> CoreHardware { get; }
+    public IReadOnlyList<HardwareRowViewModel> MoreHardware { get; }
+    public bool HasCoreHardware => CoreHardware.Count > 0;
+    public bool HasMoreHardware => MoreHardware.Count > 0;
+    public string MoreHardwareHeader => MoreHardware.Count == 1 ? "1 more component" : $"All components ({MoreHardware.Count} more)";
 
     public ScanSnapshot Snapshot { get; }
 

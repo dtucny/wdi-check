@@ -75,6 +75,24 @@ public static class Display
         _ => vendor,
     };
 
+    /// <summary>A family's silicon_vendor as a name; null for "oem" (the hardware vendor's own part) or unknown.</summary>
+    public static string? SiliconVendor(string? vendor) => vendor?.ToLowerInvariant() switch
+    {
+        "amd" => "AMD",
+        "nvidia" => "NVIDIA",
+        "intel" => "Intel",
+        "realtek" => "Realtek",
+        "mediatek" => "MediaTek",
+        "qualcomm" => "Qualcomm",
+        "aquantia" => "Marvell (Aquantia)",
+        "asmedia" => "ASMedia",
+        "ite" => "ITE",
+        "dts" => "DTS",
+        "aspeed" => "ASPEED",
+        "ami" => "AMI",
+        _ => null,
+    };
+
     public static (string Text, Severity Severity) Status(DeviceResult r) => r.Status switch
     {
         DriverStatus.Current when r.IsNewerThanIndex => ("Newer than index", Severity.Good),

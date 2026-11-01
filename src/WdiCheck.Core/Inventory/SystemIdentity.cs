@@ -18,6 +18,9 @@ public sealed record SystemIdentity
     public string? BiosVersion { get; init; }
     public DateOnly? BiosReleaseDate { get; init; }
 
+    /// <summary>The CPU's brand string, e.g. "AMD Ryzen 7 7800X3D 8-Core Processor".</summary>
+    public string? ProcessorName { get; init; }
+
     /// <summary>
     /// ESRT firmware resources of type "system firmware", i.e. the BIOS itself (HKLM\HARDWARE\UEFI\ESRT).
     /// Empty on legacy BIOS or when unreadable.
@@ -68,7 +71,14 @@ public sealed record SystemIdentity
             BiosReleaseDate = DateOnly.TryParseExact(Get("BIOSReleaseDate"), "MM/dd/yyyy", CultureInfo.InvariantCulture,
                 DateTimeStyles.None, out var d) ? d : null,
             SystemFirmwareResources = ReadSystemFirmwareResources(),
+            ProcessorName = ReadProcessorName(),
         };
+    }
+
+    private static string? ReadProcessorName()
+    {
+        using var cpu = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+        return cpu?.GetValue("ProcessorNameString") is string s && !string.IsNullOrWhiteSpace(s) ? s.Trim() : null;
     }
 
     // ESRT entry Type: 1 = system firmware, 2 = device firmware, 3 = UEFI driver. Readable without elevation.

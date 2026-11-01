@@ -96,6 +96,9 @@ public sealed class InfRow
     /// <summary>HWIDs with SUBSYS/REV removed; devices always report that shorter form too.</summary>
     public List<string> Hwids { get; init; } = [];
     public string? FirstPublished { get; init; }
+
+    /// <summary>2.0.x: "silicon" for INFs extracted from the chip vendor's own installer (those rows have no artefacts).</summary>
+    public List<string>? Sources { get; init; }
 }
 
 /// <summary>2.0.0 manifest.json: size and hash of every aggregate file.</summary>
