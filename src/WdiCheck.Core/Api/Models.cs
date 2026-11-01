@@ -143,6 +143,24 @@ public sealed class Board
 
     /// <summary>2.0.0: SMBIOS match keys (Dell, HP, Lenovo, MSI); null where the vendor publishes none.</summary>
     public BoardSmbios? Smbios { get; init; }
+
+    /// <summary>2.0.x, graphics cards: the GPU's PCI IDs and the card maker's subsystem vendor.</summary>
+    public BoardPci? Pci { get; init; }
+}
+
+public sealed class BoardPci
+{
+    /// <summary>"VVVV:DDDD" or "VVVV:DDDD:RR" (with revision), upper-case hex.</summary>
+    public List<string>? Device { get; init; }
+
+    /// <summary>The card maker's PCI subsystem vendor ID, e.g. "1462" (MSI).</summary>
+    public string? SubsysVendor { get; init; }
+
+    /// <summary>
+    /// Requested (WinDriverIndex#12): subsystem device IDs, e.g. "5130" of SUBSYS_51301462. Makers reuse them across
+    /// close variants, so one ID can map to several cards.
+    /// </summary>
+    public List<string>? Subsys { get; init; }
 }
 
 public sealed class BoardSmbios

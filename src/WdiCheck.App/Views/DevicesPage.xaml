@@ -196,20 +196,26 @@
                                 <StackPanel Grid.Row="1" Grid.Column="1">
                                     <TextBlock Text="{x:Bind Selected.LineNewest, Mode=OneWay}" Style="{StaticResource VersionTextStyle}" />
                                     <TextBlock Style="{StaticResource MutedTextStyle}">
-                                        <Run Text="{x:Bind Selected.LineNewestDate, Mode=OneWay}" /><Run Text=" · " /><Run Text="{x:Bind Selected.NewestSource, Mode=OneWay}" />
+                                        <Run Text="{x:Bind Selected.LineNewestDetail, Mode=OneWay}" />
                                     </TextBlock>
                                 </StackPanel>
                                 <TextBlock Grid.Row="2" Text="Family newest" Style="{StaticResource MutedTextStyle}" />
                                 <StackPanel Grid.Row="2" Grid.Column="1">
                                     <TextBlock Text="{x:Bind Selected.FamilyNewest, Mode=OneWay}" Style="{StaticResource VersionTextStyle}" />
                                     <TextBlock Style="{StaticResource MutedTextStyle}">
-                                        <Run Text="{x:Bind Selected.FamilyNewestDate, Mode=OneWay}" /><Run Text=" · " /><Run Text="{x:Bind Selected.FamilyNewestSources, Mode=OneWay}" />
+                                        <Run Text="{x:Bind Selected.FamilyNewestDetail, Mode=OneWay}" />
                                     </TextBlock>
                                 </StackPanel>
                             </Grid>
 
                             <TextBlock Text="{x:Bind Selected.ConfidenceText, Mode=OneWay}" Style="{StaticResource MutedTextStyle}"
                                        Visibility="{x:Bind vm:Display.ShowText(Selected.ConfidenceText), Mode=OneWay}" />
+
+                            <StackPanel Spacing="4" Visibility="{x:Bind Selected.HasVendorText, Mode=OneWay, FallbackValue=Collapsed}">
+                                <TextBlock Text="Your vendor's listing" Style="{StaticResource ColumnHeaderStyle}" />
+                                <views:StatusPill Text="{x:Bind Selected.VendorPill, Mode=OneWay}" Severity="{x:Bind Selected.VendorSeverity, Mode=OneWay}" HorizontalAlignment="Left" />
+                                <TextBlock Text="{x:Bind Selected.VendorText, Mode=OneWay}" TextWrapping="Wrap" />
+                            </StackPanel>
 
                             <StackPanel Spacing="2" Visibility="{x:Bind Selected.HasWindowsUpdateText, Mode=OneWay, FallbackValue=Collapsed}">
                                 <TextBlock Text="Windows Update" Style="{StaticResource ColumnHeaderStyle}" />
@@ -223,12 +229,12 @@
                                      Message="{x:Bind Selected.ParallelNote, Mode=OneWay}" />
 
                             <StackPanel Spacing="4" Visibility="{x:Bind Selected.HasUpdateSources, Mode=OneWay}">
-                                <TextBlock Text="Get the update" Style="{StaticResource SectionHeaderStyle}" />
-                                <HyperlinkButton Tag="{x:Bind Selected.HintUrl, Mode=OneWay}" Click="Link_Click" Padding="4,4"
+                                <TextBlock Text="{x:Bind Selected.UpdateSourcesHeader, Mode=OneWay}" Style="{StaticResource SectionHeaderStyle}" />
+                                <HyperlinkButton Tag="{x:Bind Selected.HintUrl, Mode=OneWay}" Click="Link_Click" Padding="4,4" HorizontalContentAlignment="Left"
                                                  Visibility="{x:Bind Selected.HasHint, Mode=OneWay}">
                                     <StackPanel>
-                                        <TextBlock Text="{x:Bind Selected.HintLabel, Mode=OneWay}" FontWeight="SemiBold" />
-                                        <TextBlock Text="The chip maker's own driver tool or page" Style="{StaticResource MutedTextStyle}" />
+                                        <TextBlock Text="{x:Bind Selected.HintLabel, Mode=OneWay}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="{x:Bind Selected.HintDetail, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </HyperlinkButton>
                                 <TextBlock Style="{StaticResource MutedTextStyle}"
@@ -236,10 +242,10 @@
                                 <ItemsRepeater ItemsSource="{x:Bind Selected.Links, Mode=OneWay}">
                                     <ItemsRepeater.ItemTemplate>
                                         <DataTemplate x:DataType="vm:LinkItem">
-                                            <HyperlinkButton Tag="{x:Bind Url}" Click="Link_Click" Padding="4,4" ToolTipService.ToolTip="{x:Bind Url}">
+                                            <HyperlinkButton Tag="{x:Bind Url}" Click="Link_Click" Padding="4,4" HorizontalContentAlignment="Left" ToolTipService.ToolTip="{x:Bind Url}">
                                                 <StackPanel>
-                                                    <TextBlock Text="{x:Bind Title}" FontWeight="{x:Bind vm:Display.Weight(IsBoardVendor)}" />
-                                                    <TextBlock Text="{x:Bind Detail}" Style="{StaticResource MutedTextStyle}" />
+                                                    <TextBlock Text="{x:Bind Title}" FontWeight="{x:Bind vm:Display.Weight(IsBoardVendor)}" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{x:Bind Detail}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
                                                 </StackPanel>
                                             </HyperlinkButton>
                                         </DataTemplate>

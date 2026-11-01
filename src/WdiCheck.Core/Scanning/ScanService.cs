@@ -34,6 +34,9 @@ public sealed record ScanSnapshot
 
     public BoardAssessment? Board { get; init; }
     public string? BoardError { get; init; }
+
+    /// <summary>Add-in graphics cards, each with the catalogue's cards it could be.</summary>
+    public IReadOnlyList<CardAssessment> Cards { get; init; } = [];
 }
 
 /// <summary>
@@ -46,7 +49,9 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
 
     public WdiClient Client => client;
 
-    public async Task<ScanSnapshot> RunAsync(bool revalidate, int? boardOverrideId, IProgress<string>? progress, CancellationToken ct)
+    /// <param name="cardOverrides">The user's choice of model per card, by <see cref="GraphicsCard.Key"/>.</param>
+    public async Task<ScanSnapshot> RunAsync(bool revalidate, int? boardOverrideId, IProgress<string>? progress, CancellationToken ct,
+        IReadOnlyDictionary<string, int>? cardOverrides = null)
     {
         // Device enumeration doesn't depend on the index; overlap it with the downloads.
         var devicesTask = inventory.GetDevicesAsync(ct);
@@ -116,6 +121,18 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
             Freshness = freshness,
         };
 
+        var cards = CardMatcher.Find(results, boards.Value.Data);
+        if (cards.Count > 0)
+        {
+            progress?.Report(cards.Count == 1 ? "Loading the graphics card's listing…" : "Loading the graphics cards' listings…");
+            var assessed = await Task.WhenAll(cards.Select(c =>
+            {
+                var chosen = cardOverrides?.GetValueOrDefault(c.Key) is { } id ? boards.Value.Data.FirstOrDefault(b => b.BoardId == id) : null;
+                return LoadCardAsync(c, chosen, identity, freshness.IndexGenerated, revalidate, ct);
+            })).ConfigureAwait(false);
+            snapshot = snapshot with { Cards = assessed };
+        }
+
         var overrideBoard = boardOverrideId is { } oid ? boards.Value.Data.FirstOrDefault(b => b.BoardId == oid) : null;
         var selected = overrideBoard ?? BoardMatcher.AutoSelect(candidates)?.Board;
         if (selected is null)
@@ -123,6 +140,65 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
 
         progress?.Report($"Loading report for {selected.Name}…");
         return await WithBoardAsync(snapshot, selected, overrideBoard is not null, revalidate, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>More than this many candidates (a chip's whole range from one maker) isn't worth a report each.</summary>
+    internal const int MaxCardReports = 48;
+
+    /// <summary>Re-evaluate one card against the user's choice of model, or automatic matching (null).</summary>
+    public async Task<ScanSnapshot> WithCardAsync(ScanSnapshot snapshot, string key, Board? chosen, CancellationToken ct)
+    {
+        if (snapshot.Cards.FirstOrDefault(c => c.Card.Key == key) is not { } current)
+            return snapshot;
+        var updated = await LoadCardAsync(current.Card, chosen, snapshot.Identity, snapshot.Freshness.IndexGenerated, revalidate: false, ct).ConfigureAwait(false);
+        return snapshot with { Cards = snapshot.Cards.Select(c => c.Card.Key == key ? updated : c).ToList() };
+    }
+
+    private async Task<CardAssessment> LoadCardAsync(GraphicsCard card, Board? chosen, SystemIdentity identity, string? indexGenerated,
+        bool revalidate, CancellationToken ct)
+    {
+        var selected = chosen ?? (card.Candidates.Count == 1 ? card.Candidates[0] : null);
+        // The chosen model's report, or every candidate's: whether any lists a VBIOS decides whether to ask for the model.
+        var wanted = selected is not null ? [selected] : card.Candidates.Take(MaxCardReports).ToList();
+        string? error = null;
+        using var gate = new SemaphoreSlim(6);
+        var reports = await Task.WhenAll(wanted.Select(async b =>
+        {
+            await gate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                var report = await GetReportAsync(b.BoardId, indexGenerated, revalidate, ct).ConfigureAwait(false);
+                return BoardAssessment.Create(report, identity, [card.Gpu], assessBios: false);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or WdiNotFoundException or System.Text.Json.JsonException or IOException)
+            {
+                error ??= ex.Message;
+                return null;
+            }
+            finally
+            {
+                gate.Release();
+            }
+        })).ConfigureAwait(false);
+
+        return new CardAssessment
+        {
+            Card = card,
+            Selected = selected,
+            IsOverride = chosen is not null,
+            Reports = reports.OfType<BoardAssessment>().ToList(),
+            Error = error,
+        };
+    }
+
+    private async Task<BoardReport> GetReportAsync(int boardId, string? indexGenerated, bool revalidate, CancellationToken ct)
+    {
+        var report = await client.GetBoardReportAsync(boardId, revalidate, ct).ConfigureAwait(false);
+        // Board reports aren't in the manifest, so a cached one can predate the index it's shown with
+        // (e.g. from before a publish that added BIOS versions): ask the server again in that case.
+        if (!revalidate && IsOlder(report.Value.Generated, indexGenerated))
+            report = await client.GetBoardReportAsync(boardId, revalidate: true, ct).ConfigureAwait(false);
+        return report.Value;
     }
 
     /// <summary>Optional files (added in schema 2.0.0): missing on older mirrors, or unreachable with nothing cached.</summary>
@@ -146,16 +222,12 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
 
         try
         {
-            var report = await client.GetBoardReportAsync(board.BoardId, revalidate, ct).ConfigureAwait(false);
-            // Board reports aren't in the manifest, so a cached one can predate the index it's shown with
-            // (e.g. from before a publish that added BIOS versions): ask the server again in that case.
-            if (!revalidate && IsOlder(report.Value.Generated, snapshot.Freshness.IndexGenerated))
-                report = await client.GetBoardReportAsync(board.BoardId, revalidate: true, ct).ConfigureAwait(false);
+            var report = await GetReportAsync(board.BoardId, snapshot.Freshness.IndexGenerated, revalidate, ct).ConfigureAwait(false);
             return snapshot with
             {
                 SelectedBoard = board,
                 BoardIsOverride = isOverride,
-                Board = BoardAssessment.Create(report.Value, snapshot.Identity, snapshot.Results),
+                Board = BoardAssessment.Create(report, snapshot.Identity, snapshot.Results),
                 BoardError = null,
             };
         }

@@ -9,6 +9,49 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+### Added
+- **A page per add-in graphics card.**
+  - With an add-in card, "This PC" in the navigation expands into the board (Motherboard, Laptop or
+    Desktop) and one page per card ("MSI RTX 4070 Ti"). The Overview's graphics row opens the card's page.
+  - The card is identified from its PCI IDs against WinDriverIndex's 1,353 ASUS, MSI and Gigabyte cards.
+    Those IDs are the GPU, its revision and the card maker, which a maker's models on one GPU share
+    (20 MSI cards for an RTX 4070 Ti).
+  - The page asks which model you have only when the answer would change it, meaning one of the
+    candidates lists a VBIOS. Otherwise it shows the maker's listing, which the models share, or both
+    ends of it where it differs, and says why it didn't ask. You can always pick from the list or
+    search, and the choice is remembered.
+  - Makers that only link to the GPU maker's driver (MSI) get that driver's newest release instead.
+  - Subsystem device IDs, once WinDriverIndex publishes them
+    ([WinDriverIndex#12](https://github.com/dtucny/WinDriverIndex/issues/12)), will narrow the match
+    to the exact model.
+
+### Changed
+- **Behind the vendor, or the vendor behind the newest.** Each row of a vendor's listing now reads left
+  to right:
+  - your driver against the vendor's ("Current with MSI", "234 d behind MSI", "Ahead of MSI");
+  - the vendor's version against the newest anywhere ("299 d behind newest").
+
+  "Installed here" says "Windows driver" or "No device found" instead of a blank.
+  
+  Where WinDriverIndex has the INFs inside the vendor's package, the comparison is INF to INF; otherwise
+  it uses the listed version, and only where that is a build of the same driver.
+- The Drivers page says the same for each driver. On the Overview, "This machine" and "Needs
+  attention" show the vendor's latest version, and a second label for your driver against it next to
+  the lag behind the newest ("Current with MSI" · "186 d behind newest"). "Needs attention" lists the
+  updates your vendor offers first.
+- "This PC's board" is now "This PC". The board page is titled by what the machine is.
+
+### Fixed
+- The Overview's processor row showed one chipset component's version (3.0.5.0) and opened only that
+  component (the GPIO controller) in Drivers. A row for a package of drivers now says how many there
+  are and how they stand ("AMD Chipset · 7 drivers, all current") and opens all of them.
+- Drivers: long download link names wrap instead of running off the pane. The section is titled
+  "Where to get it" for a driver that's already current. "Family newest" says when it's a package
+  version numbered differently from the driver (AMD's chipset package against its INFs).
+- Drivers: a family without a download hint links the chip maker's own page, saying when its newest
+  is on another numbering line. Realtek's page carries both the NDIS 10.x and the NetAdapter 1125.x
+  drivers.
+
 ## [0.2.8] - 2026-11-01
 
 ### Added

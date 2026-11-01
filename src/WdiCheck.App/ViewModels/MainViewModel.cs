@@ -91,7 +91,7 @@ public sealed partial class MainViewModel : ObservableObject
         var progress = new Progress<string>(p => ProgressText = p);
         try
         {
-            var snapshot = await Task.Run(() => _scan.RunAsync(revalidate, Settings.BoardOverrideId, progress, ct), ct);
+            var snapshot = await Task.Run(() => _scan.RunAsync(revalidate, Settings.BoardOverrideId, progress, ct, Settings.CardOverrides), ct);
             _windowsUpdate = Settings.CheckWindowsUpdate ? WindowsUpdateInfo.Searching : WindowsUpdateInfo.Off;
             View = new SnapshotView(snapshot, _windowsUpdate);
             if (Settings.CheckWindowsUpdate)
@@ -171,13 +171,42 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    public IEnumerable<Board> SearchBoards(string text)
+    /// <summary>Use a specific catalogue card for the card with this key (persisted), or null for automatic matching.</summary>
+    public async Task SelectCardAsync(string key, Board? card)
+    {
+        if (View is null)
+            return;
+        if (card is null)
+            Settings.CardOverrides.Remove(key);
+        else
+            Settings.CardOverrides[key] = card.BoardId;
+        TrySaveSettings();
+
+        IsBusy = true;
+        ProgressText = card is null ? "" : $"Loading report for {card.Name}…";
+        try
+        {
+            var updated = await Task.Run(() => _scan.WithCardAsync(View.Snapshot, key, card, CancellationToken.None));
+            View = new SnapshotView(updated, _windowsUpdate);
+        }
+        finally
+        {
+            IsBusy = false;
+            ProgressText = "";
+        }
+    }
+
+    public IEnumerable<Board> SearchBoards(string text) => Search(text, cards: false);
+
+    public IEnumerable<Board> SearchCards(string text) => Search(text, cards: true);
+
+    private IEnumerable<Board> Search(string text, bool cards)
     {
         if (View is null || string.IsNullOrWhiteSpace(text))
             return [];
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return View.Snapshot.Boards
-            .Where(b => !string.Equals(b.ProductType, "graphics-card", StringComparison.OrdinalIgnoreCase))
+            .Where(b => string.Equals(b.ProductType, WdiCheck.Core.Matching.CardMatcher.ProductType, StringComparison.OrdinalIgnoreCase) == cards)
             .Where(b => words.All(w => (b.Vendor + " " + b.Name + " " + b.Chipset + " " + b.VendorProductId).Contains(w, StringComparison.OrdinalIgnoreCase)))
             .Take(25);
     }

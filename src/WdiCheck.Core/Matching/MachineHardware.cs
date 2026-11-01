@@ -111,7 +111,7 @@ public static partial class MachineHardware
     private static int Order(string component) =>
         Array.IndexOf(ComponentOrder, component) is var i and >= 0 ? i : ComponentOrder.Length;
 
-    private static bool IsGpu(LocalDevice d) =>
+    internal static bool IsGpu(LocalDevice d) =>
         string.Equals(d.Class, "Display", StringComparison.OrdinalIgnoreCase)
         && d.HardwareIds.Any(id => id.StartsWith(@"PCI\", StringComparison.OrdinalIgnoreCase));
 
@@ -139,7 +139,7 @@ public static partial class MachineHardware
     }
 
     /// <summary>The newest non-beta version a chip vendor published itself, with its download page.</summary>
-    internal static SiliconRelease? NewestListedBySilicon(FamilyInfo family, string? installed)
+    public static SiliconRelease? NewestListedBySilicon(FamilyInfo family, string? installed)
     {
         foreach (var known in family.Versions)
         {

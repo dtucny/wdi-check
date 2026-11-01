@@ -14,6 +14,9 @@ public sealed class AppSettings
     /// <summary>Board chosen by the user when automatic matching was ambiguous or wrong.</summary>
     public int? BoardOverrideId { get; set; }
 
+    /// <summary>Graphics card model chosen by the user, by the card's PCI ID (see GraphicsCard.Key).</summary>
+    public Dictionary<string, int> CardOverrides { get; set; } = [];
+
     public bool ShowInboxAndUnmatched { get; set; }
 
     /// <summary>Ask Windows Update which drivers it offers this machine after each scan.</summary>
