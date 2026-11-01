@@ -213,7 +213,6 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
                        && newest.Version.Line != wl // the update itself is on that line: nothing parallel to mention
             ? note
             : null;
-        var parallelText = ParallelText(parallel);
         // Packages carrying the same INF release under another DriverVer spelling (Realtek publishes
         // 10.080.0407.2026 and 10.080.50.0407 for one 2026-04-07 build) are the same update: pool their links.
         var sameBuild = inf.Releases
@@ -222,13 +221,18 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
             .SelectMany(r => r.Artefacts)
             .DistinctBy(a => a.ArtefactId)
             .ToList();
-        // INFs from a chip vendor's own installer carry no artefacts: link the vendor's listing published that day.
-        if (sameBuild.Count == 0 && newest.IsFromSilicon && family is not null)
+        // INFs from a chip vendor's own installer carry no artefacts: link the vendor's listing of the same build
+        // (Realtek lists NDIS at the INF's 10.080.50.0407, beside ASRock's and Dell's packages), else the listing
+        // it published that day (AMD lists one package version for two installers).
+        if (newest.IsFromSilicon && family is not null)
         {
-            sameBuild = family.Versions.SelectMany(v => v.Artefacts)
-                .Where(a => a.IsBeta == 0 && a.Vendor.Equals("silicon", StringComparison.OrdinalIgnoreCase)
-                            && FamilyInfo.ParseDate(a.ReleaseDate) == newest.FirstPublished)
+            var silicon = family.Versions.SelectMany(v => v.Artefacts)
+                .Where(a => a.IsBeta == 0 && a.Vendor.Equals("silicon", StringComparison.OrdinalIgnoreCase))
                 .ToList();
+            var listed = silicon.Where(a => family.Effective(a.VersionRaw).Equals(family.Effective(newest.Row.DriverVer))).ToList();
+            if (listed.Count == 0 && sameBuild.Count == 0)
+                listed = silicon.Where(a => FamilyInfo.ParseDate(a.ReleaseDate) == newest.FirstPublished).ToList();
+            sameBuild = sameBuild.Concat(listed).DistinctBy(a => a.ArtefactId).ToList();
         }
         var newestRef = VersionRef.From(newest) with { Artefacts = sameBuild, InfName = newest.InfName };
 
@@ -254,7 +258,7 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
                 Reason = $"{how} Its newest release is {newest.Row.DriverVer}" +
                          (newest.DriverDate is { } d ? $" (dated {d:yyyy-MM-dd})" : "") +
                          (!string.Equals(newest.InfName, inf.InfName, StringComparison.OrdinalIgnoreCase) && newest.InfName is not null
-                             ? $", shipped as {newest.InfName}." : ".") + parallelText,
+                             ? $", shipped as {newest.InfName}." : "."),
             };
         }
 
@@ -277,7 +281,7 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
             ParallelLine = parallel,
             Reason = how + (newer
                 ? $" Your version is newer than any release of it the index has seen (newest indexed: {newest.Row.DriverVer})."
-                : " You have its newest release.") + parallelText,
+                : " You have its newest release."),
         };
     }
 
@@ -325,7 +329,6 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
         var lag = update is null ? 0 : DaysBetween(installedDate, update.FirstReleased);
 
         var parallel = successor is null ? ParallelLineNote(family, line, lineNewest) : null;
-        var parallelText = ParallelText(parallel);
 
         // A higher version released no later than the installed one is usually a sibling component or parallel
         // branch (AMD GPIO 2.2.x vs 2.9.x), not a successor. A later build of the same release (26.40.2.228 vs
@@ -355,7 +358,7 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
                 ParallelLine = parallel,
                 Reason = why + (update == successor
                     ? $"{update.Version.Raw} is the newest {family.Name} release, on the version line after yours ({update.Version.Line})."
-                    : $"{update.Version.Raw} is the newest {family.Name} release on the {line} line.") + approx + parallelText,
+                    : $"{update.Version.Raw} is the newest {family.Name} release on the {line} line.") + approx,
             };
         }
 
@@ -382,7 +385,7 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
                 : update is not null
                     ? $"{update.Version.Raw} is numbered higher but was released no later than your version, so it is " +
                       "treated as a sibling component or branch rather than an update."
-                    : $"Installed {installed.Raw} is the newest {family.Name} release on its line.") + parallelText,
+                    : $"Installed {installed.Raw} is the newest {family.Name} release on its line."),
         };
     }
 
@@ -425,10 +428,6 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
             return null;
         return new WaterLevelNote(water.Version, family.WaterDate, wl);
     }
-
-    private static string ParallelText(WaterLevelNote? parallel) => parallel is null ? "" :
-        $" The family's newest release, {parallel.Version} ({parallel.FirstPublished:yyyy-MM-dd}), is on a parallel " +
-        $"numbering line ({parallel.Line}); that can be a newer driver model or a different component — check the vendor's notes.";
 
     private static int? DaysBetween(DateOnly? from, DateOnly? to) =>
         from is { } f && to is { } t ? Math.Max(0, t.DayNumber - f.DayNumber) : null;

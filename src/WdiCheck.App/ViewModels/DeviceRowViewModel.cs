@@ -22,6 +22,11 @@ public sealed class DeviceRowViewModel
         Result = r;
         var d = r.Device;
         Name = d.Name;
+        // "silicon" is the chip maker's own listing: name the maker (Realtek), as the Overview does.
+        string VendorName(string? v) =>
+            string.Equals(v, "silicon", StringComparison.OrdinalIgnoreCase) && Display.SiliconVendor(r.Family?.Family.SiliconVendor) is { } maker
+                ? maker
+                : Display.Vendor(v);
         Family = r.Family?.Name ?? d.Class ?? "";
         Subtitle = r.Family is not null ? r.Family.Name : string.Join(" · ", new[] { d.Class, d.DriverProvider }.Where(s => !string.IsNullOrEmpty(s)));
         Installed = d.DriverVersion ?? "—";
@@ -41,11 +46,26 @@ public sealed class DeviceRowViewModel
         FamilyNewest = r.Family?.Water?.Version ?? "—";
         FamilyNewestDate = Display.Date(r.Family?.WaterDate);
         FamilyNewestSources = r.Family?.Water is { } w
-            ? string.Join(", ", (w.PublishedBy ?? []).Select(Display.Vendor)) + (w.UpstreamOnly ? " (upstream only)" : "")
+            ? string.Join(", ", (w.PublishedBy ?? []).Select(VendorName)) + (w.UpstreamOnly ? " (upstream only)" : "")
             : "";
-        // The family's newest is a package version (AMD's chipset package 7.12.30.211); this driver an INF in it (1.0.0.12).
+        // The family's newest on another numbering line, labelled for what it is so it doesn't read as a newer build of
+        // this driver: a driver model this device can also run (Realtek NetAdapterCx 1125.x beside NDIS 10.x), or a
+        // package version or another component (AMD's chipset package 8.09.28.1124 against its INFs at 1.0.0.12).
+        // This row is the one place the pane says so.
         if (r.Family is { Water: not null } fw && r.Installed?.Line is { } il && fw.Effective(fw.Water.Version).Line is { } wl && wl != il)
-            FamilyNewestSources += " · a package version, numbered differently from this driver";
+        {
+            if (r.ParallelLine is not null)
+            {
+                FamilyNewestLabel = "Parallel driver";
+                FamilyNewestSources += " · a newer driver model for the same hardware, not a newer build of this driver. " +
+                                       "Switching to it is a choice; check the vendor's notes";
+            }
+            else
+            {
+                FamilyNewestLabel = "Other line in family";
+                FamilyNewestSources += " · not an update to this driver: a package or another component, numbered differently";
+            }
+        }
         (StatusText, Severity) = Display.Status(r);
         GroupKey = r.Status switch
         {
@@ -78,7 +98,7 @@ public sealed class DeviceRowViewModel
         Links = DownloadLinks.For(r.Target, boardVendor)
             .Take(6)
             .Select(l => new LinkItem(
-                $"{Display.Vendor(l.Vendor)} · {(l.Contains is null ? "" : "package ")}{l.Version}",
+                $"{VendorName(l.Vendor)} · {(l.Contains is null ? "" : "package ")}{l.Version}",
                 string.Join(" · ", new[] { l.IsBoardVendor ? "Your board vendor" : null, l.ReleaseDate,
                     l.Contains is null ? null : $"contains {l.Contains}" }.Where(x => !string.IsNullOrEmpty(x))),
                 l.Url.AbsoluteUri,
@@ -102,11 +122,6 @@ public sealed class DeviceRowViewModel
                 : $"The chip maker's own page; the newest it lists, {s.Version}, is numbered differently from this driver";
             HintUrl = siliconUrl.AbsoluteUri;
         }
-
-        ParallelNote = r.ParallelLine is { } p
-            ? $"The family's newest release, {p.Version} ({Display.Date(p.FirstPublished)}), is on a different numbering line. " +
-              "That can be a newer driver model for the same hardware, or a different component of the same package."
-            : "";
 
         LineVersions = r.Inf is { } inf
             ? inf.Releases
@@ -240,7 +255,6 @@ public sealed class DeviceRowViewModel
     public IReadOnlyList<HwidItem> Ids { get; }
     public string OtherFamilies { get; }
     public IReadOnlyList<LinkItem> Links { get; }
-    public string ParallelNote { get; }
     public IReadOnlyList<KnownVersionItem> LineVersions { get; }
     public int SortKey { get; }
 
@@ -292,13 +306,15 @@ public sealed class DeviceRowViewModel
 
     public bool HasUpdateSources => HasLinks || HasHint;
 
+    /// <summary>"Family newest", or "Other line in family" when that release is numbered differently from this driver.</summary>
+    public string FamilyNewestLabel { get; } = "Family newest";
+
     /// <summary>Date · source, without a dangling separator when either is missing (INF releases without a DriverVer date).</summary>
     public string LineNewestDetail => string.Join(" · ", new[] { LineNewestDate, NewestSource }.Where(x => x.Length > 0));
     public string FamilyNewestDetail => string.Join(" · ", new[] { FamilyNewestDate, FamilyNewestSources }.Where(x => x.Length > 0));
 
     /// <summary>"Get the update" only when there is one; a current driver gets where its family comes from.</summary>
     public string UpdateSourcesHeader => Result.Status == DriverStatus.Behind ? "Get the update" : "Where to get it";
-    public bool HasParallelNote => ParallelNote.Length > 0;
     public bool HasLineVersions => LineVersions.Count > 0;
     public bool HasOtherFamilies => OtherFamilies.Length > 0;
     public bool HasFamily => Result.Family is not null;

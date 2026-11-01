@@ -165,6 +165,43 @@ public class MachineHardwareTests
         Assert.Equal("32.0.21045.20006", row.Silicon?.Version);
     }
 
+    // Realtek (2026-11-01 publish, WinDriverIndex#15): its page lists NDIS at the INF's 10.080.50.0407 (the build ASRock
+    // and Dell ship) beside NetAdapterCx 1125.031.50.0603, and the rt640x64.inf row is now marked silicon too.
+    [Fact]
+    public void ChipVendorsReleaseOnTheInstalledLineWithItsOwnDateAndLink()
+    {
+        var realtekPage = "https://www.realtek.com/Download/List?cate_id=584";
+        var index = DriverIndex.Build(Fixtures.Families, Fixtures.Water, Fixtures.Artefacts.Concat(
+        [
+            new Artefact { ArtefactId = 9201, Vendor = "silicon", Kind = "driver", FamilyId = 88, VersionRaw = "1125.031.50.0603", ReleaseDate = "2026-10-05", Url = realtekPage },
+            new Artefact { ArtefactId = 9202, Vendor = "silicon", Kind = "driver", FamilyId = 88, VersionRaw = "10.080.50.0407", ReleaseDate = "2026-10-05", Url = realtekPage },
+            new Artefact { ArtefactId = 9203, Vendor = "dell", Kind = "driver", FamilyId = 88, VersionRaw = "1168.030.0508.2026", ReleaseDate = "2026-09-07",
+                Url = "https://dl.dell.com/FOLDER13000000M/1/Realtek-LAN.exe" },
+        ]));
+        var infs = InfIndex.Build(
+            [
+                new InfRow
+                {
+                    InfName = "rt640x64.inf", DriverVer = "10.080.50.0407", DriverVerNormalised = [10, 80, 50, 407], DriverDate = "2026-04-07",
+                    Class = "Net", FamilyIds = [88], Hwids = [@"PCI\VEN_10EC&DEV_8125"], ArtefactIds = [9203],
+                    FirstPublished = "2026-09-07", Sources = ["silicon", "vendor"],
+                },
+            ],
+            index.Families.Values.SelectMany(f => f.Versions).SelectMany(v => v.Artefacts));
+        var nic = Fixtures.Rtl8125() with { OriginalInfName = "rt640x64.inf", Class = "Net" };
+
+        var result = new DeviceMatcher(index, infs).Match(nic);
+        var row = MachineHardware.Build(Identity, [result], infs).Single(i => i.Component == "lan");
+
+        Assert.Equal("10.080.50.0407", MachineHardware.NewestListedBySilicon(result.Family!, nic.DriverVersion)?.Version);
+        Assert.Equal("10.080.50.0407", row.Silicon?.Version);
+        Assert.Equal(new DateOnly(2026, 10, 5), row.Silicon?.Date);
+        Assert.True(row.Silicon?.SameNumbering);
+        // Realtek's own listing is among the update's links, beside Dell's package.
+        Assert.Contains(DownloadLinks.For(result.Update, "msi"), l => l.Vendor == "silicon" && l.Url.AbsoluteUri == realtekPage);
+        Assert.Contains(DownloadLinks.For(result.Update, "msi"), l => l.Vendor == "dell");
+    }
+
     [Fact]
     public void NoSiliconListingMeansNoSiliconRelease() =>
         Assert.All(Build(Fixtures.Index(), Igpu(), Rtx4070Ti()), i => Assert.Null(i.Silicon));

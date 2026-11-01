@@ -9,6 +9,24 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+### Changed
+- **The chip maker's own release** is the one on your driver's numbering line when the maker lists one.
+  Realtek's page now lists NDIS 10.080.50.0407 beside NetAdapterCx 1125.031.50.0603
+  ([WinDriverIndex#15](https://github.com/dtucny/WinDriverIndex/issues/15)). So an NDIS driver is
+  shown Realtek's 10.080.50.0407, with Realtek's own date, instead of a release "numbered differently".
+- When the newest build of an INF is one the chip maker also lists, its own download is among the
+  update's links, beside the board vendors' packages. The chip maker is named (Realtek) instead of
+  "Silicon vendor".
+- **Drivers: the family's newest on another numbering line no longer reads as an update.** The row is
+  labelled for what it is:
+  - "Parallel driver": a newer driver model this device can also run, such as Realtek NetAdapterCx
+    1125.x beside NDIS 10.x. Switching to it is a choice, not an update.
+  - "Other line in family": a package version or another component, such as AMD's chipset package
+    against its INFs.
+  
+  That row is now the only place the pane says this. The match explanation and the separate
+  "Different version line" box no longer repeat it.
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

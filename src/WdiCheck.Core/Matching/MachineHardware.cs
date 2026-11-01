@@ -129,7 +129,11 @@ public static partial class MachineHardware
         if (driver.Inf?.Releases.FirstOrDefault(r => r.IsFromSilicon) is { } inf)
         {
             // Releases are newest first. Shown in the family's numbering (NVIDIA 32.0.16.2101 → 621.01), like the page.
-            return new SiliconRelease(family.Effective(inf.Row.DriverVer).Raw, inf.FirstPublished, listed?.Url, true);
+            // When the chip vendor lists this very build, its own date; the INF row's is the first anyone published it
+            // (Realtek's 10.080.50.0407 went out from Dell a month before Realtek's page).
+            var version = family.Effective(inf.Row.DriverVer);
+            var date = listed is { Date: { } d } && family.Effective(listed.Version).Equals(version) ? d : inf.FirstPublished;
+            return new SiliconRelease(version.Raw, date, listed?.Url, true);
         }
         // Their INFs were read and none binds this device in its numbering: the family's release isn't for it.
         // A release numbered differently (a chipset package) was never comparable by INF; keep it.
@@ -138,22 +142,30 @@ public static partial class MachineHardware
         return listed;
     }
 
-    /// <summary>The newest non-beta version a chip vendor published itself, with its download page.</summary>
+    /// <summary>
+    /// The newest non-beta version a chip vendor published itself, with its download page: on the installed driver's
+    /// version line when the vendor has one there (Realtek lists NDIS 10.080.50.0407 beside NetAdapterCx
+    /// 1125.031.50.0603), else its newest.
+    /// </summary>
     public static SiliconRelease? NewestListedBySilicon(FamilyInfo family, string? installed)
     {
-        foreach (var known in family.Versions)
-        {
-            var artefacts = known.Artefacts.Where(a => a.IsBeta == 0 && a.Vendor.Equals(Silicon, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (artefacts.Count == 0)
-                continue;
-            var url = artefacts.Select(a => a.Url).FirstOrDefault(DownloadLinks.IsSafe);
-            return new SiliconRelease(
-                known.Version.Raw,
-                artefacts.Select(a => FamilyInfo.ParseDate(a.ReleaseDate)).Where(d => d is not null).Min(),
-                url is null ? null : new Uri(url),
-                family.Effective(installed).Line is { } line && known.Version.Line == line);
-        }
-        return null;
+        var line = family.Effective(installed).Line;
+        var releases = family.Versions
+            .Select(known => (known, Artefacts: known.Artefacts.Where(a => a.IsBeta == 0 && a.Vendor.Equals(Silicon, StringComparison.OrdinalIgnoreCase)).ToList()))
+            .Where(x => x.Artefacts.Count > 0)
+            .ToList();
+        var pick = releases.FirstOrDefault(x => line is not null && x.known.Version.Line == line);
+        if (pick.known is null)
+            pick = releases.FirstOrDefault();
+        if (pick.known is null)
+            return null;
+        var (newest, artefacts) = pick;
+        var url = artefacts.Select(a => a.Url).FirstOrDefault(DownloadLinks.IsSafe);
+        return new SiliconRelease(
+            newest.Version.Raw,
+            artefacts.Select(a => FamilyInfo.ParseDate(a.ReleaseDate)).Where(d => d is not null).Min(),
+            url is null ? null : new Uri(url),
+            line is not null && newest.Version.Line == line);
     }
 
     /// <summary>
