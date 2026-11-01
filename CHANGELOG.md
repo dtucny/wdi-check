@@ -9,6 +9,8 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-11-01
+
 ### Added
 - **Licence.** WdiCheck is free software under the GNU GPL version 3 or later, with additional
   terms in `NOTICE`: forks keep the "Based on WdiCheck by D. Tucny" attribution and must say
@@ -24,7 +26,9 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ### Removed
 - `doc/upstream-requests.md`. Open requests to WinDriverIndex are now
-  [issues on its repository](https://github.com/dtucny/WinDriverIndex/issues) (#9–#11).
+  [issues on its repository](https://github.com/dtucny/WinDriverIndex/issues): currently
+  [9](https://github.com/dtucny/WinDriverIndex/issues/9), [10](https://github.com/dtucny/WinDriverIndex/issues/10)
+  and [11](https://github.com/dtucny/WinDriverIndex/issues/11).
 
 ## [0.2.7] - 2026-11-01
 
@@ -237,7 +241,8 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
-[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.7...HEAD
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.8...HEAD
+[0.2.8]: https://github.com/dtucny/wdi-check/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/dtucny/wdi-check/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/dtucny/wdi-check/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/dtucny/wdi-check/compare/v0.2.4...v0.2.5
