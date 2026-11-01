@@ -9,6 +9,8 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-01
+
 ### Added
 - **A page per add-in graphics card.**
   - With an add-in card, "This PC" in the navigation expands into the board (Motherboard, Laptop or
@@ -31,10 +33,9 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
   - your driver against the vendor's ("Current with MSI", "234 d behind MSI", "Ahead of MSI");
   - the vendor's version against the newest anywhere ("299 d behind newest").
 
-  "Installed here" says "Windows driver" or "No device found" instead of a blank.
-  
   Where WinDriverIndex has the INFs inside the vendor's package, the comparison is INF to INF; otherwise
   it uses the listed version, and only where that is a build of the same driver.
+- "Installed here" says "Windows driver" or "No device found" instead of a blank.
 - The Drivers page says the same for each driver. On the Overview, "This machine" and "Needs
   attention" show the vendor's latest version, and a second label for your driver against it next to
   the lag behind the newest ("Current with MSI" · "186 d behind newest"). "Needs attention" lists the
@@ -284,7 +285,8 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
-[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.2.8...HEAD
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/dtucny/wdi-check/compare/v0.2.8...v0.3.0
 [0.2.8]: https://github.com/dtucny/wdi-check/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/dtucny/wdi-check/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/dtucny/wdi-check/compare/v0.2.5...v0.2.6

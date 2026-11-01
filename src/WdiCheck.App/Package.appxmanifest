@@ -6,7 +6,7 @@
   IgnorableNamespaces="uap rescap">
 
   <!-- Publisher must match the subject of the signing certificate (scripts/new-dev-cert.ps1). -->
-  <Identity Name="WdiCheck" Publisher="CN=WdiCheck Dev" Version="0.2.8.0" />
+  <Identity Name="WdiCheck" Publisher="CN=WdiCheck Dev" Version="0.3.0.0" />
 
   <Properties>
     <DisplayName>WdiCheck</DisplayName>
