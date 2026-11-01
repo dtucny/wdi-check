@@ -7,7 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <Version>0.2.7</Version>
-    <Authors>WdiCheck contributors</Authors>
+    <Authors>D. Tucny</Authors>
+    <Copyright>Copyright (C) 2026 D. Tucny</Copyright>
     <Product>WdiCheck</Product>
   </PropertyGroup>
 </Project>

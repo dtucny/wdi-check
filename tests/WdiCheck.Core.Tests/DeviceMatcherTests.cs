@@ -179,7 +179,7 @@ public class DeviceMatcherTests
     [Fact]
     public void LaterBuildOfTheSameReleaseIsAnUpdateWhateverTheListingDates()
     {
-        // WILLOW: Bluetooth 26.40.2.228 vs 26.40.3.65 — Lenovo listed the older build after WU listed the newer one.
+        // Legion Slim 5: Bluetooth 26.40.2.228 vs 26.40.3.65 — Lenovo listed the older build after WU listed the newer one.
         var family = new Api.Family { FamilyId = 56, Name = "MediaTek Bluetooth (Wi-Fi 6E)", Component = "bluetooth", Hwids = [@"USB\VID_0489&PID_E0D8&MI_00"] };
         Api.Artefact A(int id, string vendor, string v, string d) =>
             new() { ArtefactId = id, Vendor = vendor, Kind = "driver", FamilyId = 56, VersionRaw = v, ReleaseDate = d, Url = $"https://example.invalid/{v}" };

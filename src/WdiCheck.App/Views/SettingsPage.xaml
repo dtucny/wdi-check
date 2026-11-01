@@ -65,6 +65,15 @@
                 <StackPanel Spacing="8">
                     <TextBlock Text="About" Style="{StaticResource BodyStrongTextBlockStyle}" />
                     <TextBlock x:Name="VersionText" Style="{StaticResource MutedTextStyle}" />
+                    <!-- Appropriate Legal Notices: NOTICE's additional terms require this credit to stay. -->
+                    <TextBlock TextWrapping="Wrap" IsTextSelectionEnabled="True">
+                        <Run Text="WdiCheck by D. Tucny. Copyright (C) 2026 D. Tucny. Free software under the " />
+                        <Hyperlink NavigateUri="https://github.com/dtucny/wdi-check/blob/main/LICENSE">GNU GPL v3 or later</Hyperlink>
+                        <Run Text=" with " />
+                        <Hyperlink NavigateUri="https://github.com/dtucny/wdi-check/blob/main/NOTICE">attribution terms</Hyperlink>
+                        <Run Text="; there is NO WARRANTY. " />
+                        <Hyperlink NavigateUri="https://github.com/dtucny/wdi-check">Source code</Hyperlink>
+                    </TextBlock>
                     <TextBlock TextWrapping="Wrap">
                         <Run Text="WdiCheck compares the drivers installed on this PC with " />
                         <Hyperlink NavigateUri="https://windriverindex.tucny.com/">WinDriverIndex</Hyperlink>

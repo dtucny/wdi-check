@@ -1,0 +1,36 @@
+WdiCheck
+Copyright (C) 2026 D. Tucny
+https://github.com/dtucny/wdi-check
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version, with the additional terms below.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details. A copy is in the LICENSE file; if it is missing, see
+<https://www.gnu.org/licenses/>.
+
+
+ADDITIONAL TERMS UNDER SECTION 7 OF THE GNU GPL VERSION 3
+
+These terms apply to WdiCheck and to every work based on it.
+
+a. Attribution (section 7(b)). You must preserve the copyright notice "Copyright (C) 2026
+   D. Tucny" and the author attribution, with a link to https://github.com/dtucny/wdi-check, in
+   the source code and in the Appropriate Legal Notices shown by the program's user interface
+   (in WdiCheck: the About section of Settings). The attribution reads "WdiCheck by D. Tucny";
+   in a modified version it reads "Based on WdiCheck by D. Tucny" and may sit alongside your own
+   credit, but must not be removed or obscured.
+
+b. Origin (section 7(c)). You must not misrepresent the origin of this material. A modified
+   version must be marked as different from the original: it must state that it has been
+   modified, and must not be presented as the original WdiCheck or as the original author's
+   work.
+
+c. Names (section 7(e)). This license grants no rights to use the name "WdiCheck", or the
+   author's name, to name, endorse or promote a modified version, other than as required by
+   term a.
+
+Index data that WdiCheck downloads comes from WinDriverIndex (https://windriverindex.tucny.com/)
+and is licensed separately under CC-BY-4.0.

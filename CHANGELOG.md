@@ -9,6 +9,13 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+### Added
+- **Licence.** WdiCheck is free software under the GNU GPL version 3 or later, with additional
+  terms in `NOTICE`: forks keep the "Based on WdiCheck by D. Tucny" attribution and must say
+  they're modified. Settings › About shows the credit and links the licence and source, and
+  releases include `LICENSE` and `NOTICE`. `CONTRIBUTING.md` explains how to report problems and
+  the terms contributions are accepted under.
+
 ## [0.2.7] - 2026-11-01
 
 ### Added
@@ -39,7 +46,7 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ### Added
 - **Windows Update offers for devices the index doesn't know about** now appear under "Needs attention"
-  and in the Drivers list, even with in-box and unmatched devices hidden. On WILLOW, Windows Update offers
+  and in the Drivers list, even with in-box and unmatched devices hidden. On a Lenovo Legion Slim 5, Windows Update offers
   Lenovo's Universal Device Client driver 26.8.0.29, which is bound to a `ROOT\` ID the index doesn't collect.
 - **Catalog-only updates are labelled.** When the only listing of the newer build is the Windows Update
   Catalog, the detail pane says "a newer build exists (another OEM's, via Windows Update)": Microsoft
@@ -50,7 +57,7 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 ### Fixed
 - **The installed BIOS counted as a Windows Update driver update.** Windows Update offers an OEM firmware
   package when the firmware device only has Microsoft's generic driver, even if it holds the BIOS that's
-  already installed (WILLOW: Lenovo firmware 1.50.0.0, dated the same day as BIOS M3CN50WW). A
+  already installed (Legion Slim 5: Lenovo firmware 1.50.0.0, dated the same day as BIOS M3CN50WW). A
   system-firmware offer dated the same day as the installed BIOS is now shown as "most likely the BIOS you
   already have" and not counted. The ESRT (`HKLM\HARDWARE\UEFI\ESRT`) identifies which firmware resource is
   the BIOS.
@@ -82,7 +89,7 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ### Fixed
 - **BIOS shown as "behind" when current.** Windows reports a BIOS's build date and the index lists
-  the vendor's publish date, and vendors publish months after building: WILLOW's M3CN50WW was built
+  the vendor's publish date, and vendors publish months after building: the Legion Slim 5's M3CN50WW was built
   2026-04-23 and published 2026-08-07. It is Lenovo's newest, but showed as 106 days behind. With
   dates only, a vendor BIOS published within 180 days of the installed build date now shows
   "Probably current", with an explanation. When the index provides the vendor's BIOS version

@@ -11,7 +11,7 @@ namespace WdiCheck.Core.Tests;
 /// <summary>
 /// Schema 2.0.0 features: INF-level matching (infs.json), published scheme rules and line data,
 /// SMBIOS board keys. Rows are real (2026-09-28 publish); devices are this repo's test PC and
-/// the WILLOW export (Lenovo Legion Slim 5 16APH8).
+/// a Lenovo Legion Slim 5 16APH8 export.
 /// </summary>
 public class InfMatchingTests
 {
@@ -42,7 +42,7 @@ public class InfMatchingTests
     [Fact]
     public void ComponentInfCurrentAtItsOwnNewest()
     {
-        // WILLOW: NVIDIA Platform Controllers 32.0.16.1534 was "112 d behind" 616.92 under package matching.
+        // Legion Slim 5: NVIDIA Platform Controllers 32.0.16.1534 was "112 d behind" 616.92 under package matching.
         var pcf = Fixtures.Device("NVIDIA Platform Controllers and Framework", "32.0.16.1534", "NVIDIA", "oem118.inf",
             [@"ACPI\VEN_NVDA&DEV_0820", @"ACPI\NVDA0820"], original: "nvpcf.inf");
 
@@ -57,7 +57,7 @@ public class InfMatchingTests
     [Fact]
     public void ComponentInfBehindItsOwnNewest()
     {
-        // WILLOW: Realtek Audio Universal Service was compared with an unrelated 1.4.2.55; its INF's newest is 1.0.1018.0.
+        // Legion Slim 5: Realtek Audio Universal Service was compared with an unrelated 1.4.2.55; its INF's newest is 1.0.1018.0.
         var svc = Fixtures.Device("Realtek Audio Universal Service", "1.0.866.0", "Realtek", "oem153.inf",
             [@"SWC\VEN_10EC&SID_0001"], original: "realtekservice.inf", driverDate: "2025-03-10");
 
@@ -141,7 +141,7 @@ public class InfMatchingTests
     [Fact]
     public void AnotherOemsInfForTheSameChipIsNotTheTarget()
     {
-        // WILLOW: Lenovo's hdxacplv.inf 6.0.9857.1 was compared with MSI's hdxacpmsi.inf 6.0.10007.1 via the shared chip ID.
+        // Legion Slim 5: Lenovo's hdxacplv.inf 6.0.9857.1 was compared with MSI's hdxacpmsi.inf 6.0.10007.1 via the shared chip ID.
         var rows = Rows.Append(Inf("hdxacpmsi.inf", "6.0.10007.1", [6, 0, 10007, 1], "2026-06-23", "MEDIA", [1],
             [@"HDAUDIO\FUNC_01&VEN_10EC&DEV_0287"]));
         var matcher = new DeviceMatcher(Fixtures.Index(), InfIndex.Build(rows, Fixtures.Artefacts));
@@ -167,7 +167,7 @@ public class InfMatchingTests
     [Fact]
     public void SameInfNameInAnotherNumberingSchemeFallsBack()
     {
-        // WILLOW: RZ616 Wi-Fi runs Windows Update's mtkwl6ex.inf 25.40.2.579; the index lists the vendor's 3.x builds.
+        // Legion Slim 5: RZ616 Wi-Fi runs Windows Update's mtkwl6ex.inf 25.40.2.579; the index lists the vendor's 3.x builds.
         var rows = Rows.Append(Inf("mtkwl6ex.inf", "3.06.02.1427", [3, 6, 2, 1427], "2026-06-10", "Net", [54], [@"PCI\VEN_14C3&DEV_0616"]));
         var matcher = new DeviceMatcher(Fixtures.Index(), InfIndex.Build(rows, Fixtures.Artefacts));
         var wifi = Fixtures.Device("RZ616 Wi-Fi 6E 160MHz", "25.40.2.579", "MediaTek, Inc.", "oem11.inf",
@@ -377,7 +377,7 @@ public class SmbiosBoardTests
     [Fact]
     public void LenovoByMtmPrefix()
     {
-        // WILLOW: SystemProductName 82Y9, baseboard LNVNB161216.
+        // Legion Slim 5: SystemProductName 82Y9, baseboard LNVNB161216.
         var id = new SystemIdentity { SystemManufacturer = "LENOVO", SystemProductName = "82Y9", BaseBoardProduct = "LNVNB161216" };
         Assert.Equal(3, BoardMatcher.AutoSelect(BoardMatcher.Rank(id, Boards))?.Board.BoardId);
     }

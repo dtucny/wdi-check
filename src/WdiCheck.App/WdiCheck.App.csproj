@@ -36,6 +36,8 @@
     <!-- Unpackaged builds load these from disk (ms-appx:/// maps to the app folder), so publish them too. -->
     <Content Include="Assets\*.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- GPL: binaries ship with the licence and the attribution terms. -->
+    <Content Include="..\..\LICENSE;..\..\NOTICE" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 

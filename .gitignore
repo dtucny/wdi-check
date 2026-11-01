@@ -12,3 +12,4 @@ artifacts/
 
 # Exported reports describe a specific machine
 driver-status-*.json
+driver-status-*.csv

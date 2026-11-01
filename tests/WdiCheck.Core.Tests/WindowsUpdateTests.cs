@@ -93,17 +93,17 @@ public class WindowsUpdateTests
         Assert.EndsWith("10.80.407.2026,2026-04-07,optional", lines[1]);
     }
 
-    // What Windows Update offered WILLOW (Lenovo Legion Slim 5 16APH8, BIOS M3CN50WW built 2026-04-23).
-    private static readonly List<WindowsUpdateOffer> WillowOffers = Offers(
+    // What Windows Update offered a Lenovo Legion Slim 5 16APH8 with BIOS M3CN50WW built 2026-04-23.
+    private static readonly List<WindowsUpdateOffer> LegionOffers = Offers(
         new("Lenovo System Driver Update (26.8.0.29)", new DateTime(2026, 8, 25), @"root\udsudcdriver",
             "OtherHardware", "Lenovo", null, null, BrowseOnly: false, IsHidden: false, "u1"),
         new("Lenovo Ltd. Firmware Driver Update (1.50.0.0)", new DateTime(2026, 4, 23),
             @"uefi\res_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}", "Firmware", "Lenovo Ltd.", null, null,
             BrowseOnly: false, IsHidden: false, "u2"));
 
-    private static readonly Guid WillowBiosResource = Guid.Parse("26c22f8e-d4d3-4aa8-86bb-53eec694a356");
+    private static readonly Guid LegionBiosResource = Guid.Parse("26c22f8e-d4d3-4aa8-86bb-53eec694a356");
 
-    private static SystemIdentity Willow(DateOnly? biosDate = null, params Guid[] systemFirmware) => new()
+    private static SystemIdentity Legion(DateOnly? biosDate = null, params Guid[] systemFirmware) => new()
     {
         SystemManufacturer = "LENOVO",
         SystemProductName = "82Y9",
@@ -115,35 +115,35 @@ public class WindowsUpdateTests
     [Fact]
     public void FirmwarePackageDatedLikeTheBiosMatchesIt()
     {
-        var offers = WillowOffers;
+        var offers = LegionOffers;
 
         Assert.Equal("1.50.0.0", offers[1].Version?.Raw);
-        Assert.Equal(WillowBiosResource, offers[1].FirmwareResource);
-        Assert.True(offers[1].MatchesInstalledBios(Willow(systemFirmware: WillowBiosResource)));
-        Assert.True(offers[1].MatchesInstalledBios(Willow()));   // no ESRT: class and date decide
-        Assert.False(offers[0].MatchesInstalledBios(Willow()));  // not firmware
+        Assert.Equal(LegionBiosResource, offers[1].FirmwareResource);
+        Assert.True(offers[1].MatchesInstalledBios(Legion(systemFirmware: LegionBiosResource)));
+        Assert.True(offers[1].MatchesInstalledBios(Legion()));   // no ESRT: class and date decide
+        Assert.False(offers[0].MatchesInstalledBios(Legion()));  // not firmware
     }
 
     [Fact]
     public void NewerOrOtherFirmwareIsAnUpdate()
     {
-        var offers = WillowOffers;
+        var offers = LegionOffers;
 
-        Assert.False(offers[1].MatchesInstalledBios(Willow(new DateOnly(2025, 11, 2))));       // older BIOS installed
-        Assert.False(offers[1].MatchesInstalledBios(Willow(systemFirmware: Guid.NewGuid())));  // device firmware, not the BIOS
+        Assert.False(offers[1].MatchesInstalledBios(Legion(new DateOnly(2025, 11, 2))));       // older BIOS installed
+        Assert.False(offers[1].MatchesInstalledBios(Legion(systemFirmware: Guid.NewGuid())));  // device firmware, not the BIOS
     }
 
     [Fact]
     public async Task JsonExportListsWhatEachOfferAppliesTo()
     {
-        var offers = WillowOffers;
+        var offers = LegionOffers;
         var udc = Fixtures.Device("Universal Device Client Device", "26.7.0.7", "Lenovo", "oem182.inf", [@"ROOT\udsudcdriver"], []);
         var firmware = Fixtures.Device("System Firmware", "10.0.26100.4768", "Microsoft", "c_firmware.inf",
             [@"UEFI\RES_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}&REV_32"], [@"UEFI\RES_{26c22f8e-d4d3-4aa8-86bb-53eec694a356}"]);
         var matcher = new DeviceMatcher(Fixtures.Index());
         using var ms = new MemoryStream();
 
-        await ReportExporter.WriteJsonAsync(ms, [matcher.Match(udc), matcher.Match(firmware)], Willow(), null, null,
+        await ReportExporter.WriteJsonAsync(ms, [matcher.Match(udc), matcher.Match(firmware)], Legion(), null, null,
             TestContext.Current.CancellationToken, offers);
         using var doc = JsonDocument.Parse(ms.ToArray());
         var json = doc.RootElement.GetProperty("windows_update_offers");

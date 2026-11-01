@@ -159,7 +159,7 @@ public class BoardAssessmentTests
     }
 
     [Theory]
-    // WILLOW: M3CN50WW built 2026-04-23, published by Lenovo 2026-08-07 — Vantage confirms it is the newest.
+    // Legion Slim 5: M3CN50WW built 2026-04-23, published by Lenovo 2026-08-07 — Vantage confirms it is the newest.
     [InlineData("2026-08-07", null, "M3CN50WW", "2026-04-23", BiosStatus.Unconfirmed)]
     [InlineData("2026-08-07", "M3CN50WW", "M3CN50WW", "2026-04-23", BiosStatus.Current)]
     [InlineData("2026-08-07", "M3CN50WW", "M3CN49WW", "2026-02-10", BiosStatus.Behind)]

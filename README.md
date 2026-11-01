@@ -178,3 +178,13 @@ scripts/                   build, release notes, dev certificate, asset generati
 doc/upstream-requests.md   problems found in WinDriverIndex and suggested API changes
 CHANGELOG.md               release notes
 ```
+
+## Contributing and licence
+
+Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Copyright (C) 2026 D. Tucny. WdiCheck is free software under the
+[GNU GPL version 3 or later](LICENSE), with additional terms in [NOTICE](NOTICE): keep the
+"Based on WdiCheck by D. Tucny" attribution, and mark modified versions as such rather than
+presenting them as the original. The WinDriverIndex data it reads is licensed separately under
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/).

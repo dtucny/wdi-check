@@ -53,7 +53,7 @@ can't unpack yet, so those families have only board vendors' INF rows (#19, roun
 
 Lenovo's year-numbered MediaTek builds (25.x/26.x) are now routed to the right families as a
 parallel line (done in 2.0.x). `infs.json` still has only MediaTek's vendor-numbered
-`mtkwl6ex.inf` (3.x), so a machine on the Windows Update build (WILLOW: `25.40.2.579`) can't be
+`mtkwl6ex.inf` (3.x), so a machine on the Windows Update build (a Legion Slim 5: `25.40.2.579`) can't be
 compared INF-to-INF. The fix needs the Lenovo or Windows Update payloads (same crawler job as #9).
 
 ---
@@ -92,11 +92,11 @@ compared INF-to-INF. The fix needs the Lenovo or Windows Update payloads (same c
 </details>
 
 <details>
-<summary>Round 3 (2026-09-29): from WILLOW, checked against Lenovo Vantage (#16 done, #17 open)</summary>
+<summary>Round 3 (2026-09-29): from a Lenovo Legion Slim 5, checked against Lenovo Vantage (#16 done, #17 open)</summary>
 
 - **BIOS version, not just date (#16).** `by-board` `bios` had only `last_bios`, the date the vendor
   published its newest BIOS. Windows reports the BIOS's *build* date, and vendors publish weeks to
-  months later: WILLOW's Lenovo M3CN50WW was built 2026-04-23 and published 2026-08-07. Vantage
+  months later: the Legion Slim 5's M3CN50WW was built 2026-04-23 and published 2026-08-07. Vantage
   confirms it is the newest, but a date comparison said 106 days behind. Requested:
   `last_bios_version` (Lenovo `M3CN50WW`, MSI `1.L2`), so an exact match with the SMBIOS
   `BIOSVersion` is a reliable "current". *Resolution:* published 2026-09-29 as `last_bios_version`
