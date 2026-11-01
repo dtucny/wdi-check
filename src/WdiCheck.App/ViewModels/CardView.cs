@@ -29,11 +29,14 @@ public sealed partial class CardView
             Subtitle = card.Gpu.Device.Name;
             MatchText = a.IsOverride ? "Chosen by you" : $"The only {maker} card on this GPU in the catalogue";
             SupportUrl = Https(s.SupportUrl);
-            // Only for a known model: there's no one page for "one of 20".
             IndexPageUrl = dataSource is null ? null : WdiClient.BoardPage(dataSource, s.BoardId);
         }
         else
         {
+            // No one report for "one of 20": the site's search, where the models can be compared.
+            IndexPageUrl = dataSource is null ? null : WdiClient.BoardSearch(dataSource);
+            IndexPageText = "Search WinDriverIndex";
+            IndexPageTip = $"Search the WinDriverIndex catalogue for this card's models (e.g. “{ShortGpuName(card.Gpu.Device.Name)}”)";
             Title = $"{maker} {card.Gpu.Device.Name}";
             Subtitle = count == 0
                 ? $"This card isn't in the WinDriverIndex catalogue."
@@ -117,8 +120,11 @@ public sealed partial class CardView
     public string IdText { get; }
     public Uri? SupportUrl { get; }
     public bool HasSupportUrl => SupportUrl is not null;
+    /// <summary>The chosen model's report on the WinDriverIndex site; without one, the site's search.</summary>
     public Uri? IndexPageUrl { get; }
     public bool HasIndexPageUrl => IndexPageUrl is not null;
+    public string IndexPageText { get; } = "WinDriverIndex page";
+    public string IndexPageTip { get; } = "This model's report on the WinDriverIndex site";
 
     /// <summary>"Get from NVIDIA": the GPU maker's driver page, whichever card maker built the card.</summary>
     public Uri? SiliconUrl { get; }

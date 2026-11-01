@@ -62,6 +62,9 @@ public sealed class WdiClient
     /// </summary>
     public static Uri BoardPage(Uri dataBase, int boardId) => new(EnsureTrailingSlash(dataBase), $"../../board.html#{boardId}");
 
+    /// <summary>The site's board page without a board: its search across the catalogue.</summary>
+    public static Uri BoardSearch(Uri dataBase) => new(EnsureTrailingSlash(dataBase), "../../board.html");
+
     public TimeSpan MaxAge { get; init; } = DefaultMaxAge;
 
     public string CacheDirectory => _cacheDir;

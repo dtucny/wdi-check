@@ -25,6 +25,10 @@ public sealed class WdiClientTests : IDisposable
         Assert.Equal(expected, WdiClient.BoardPage(new Uri(source), boardId).AbsoluteUri);
 
     [Fact]
+    public void BoardSearchIsTheSitesBoardPageWithoutAnId() =>
+        Assert.Equal("https://windriverindex.tucny.com/board.html", WdiClient.BoardSearch(WdiClient.DefaultBaseUri).AbsoluteUri);
+
+    [Fact]
     public async Task DownloadsParsesAndCaches()
     {
         _handler.Next = () => Ok(FamiliesJson, "\"v1\"");

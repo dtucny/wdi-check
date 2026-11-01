@@ -45,8 +45,8 @@
                             <HyperlinkButton Content="Vendor support page"
                                              NavigateUri="{x:Bind Card.SupportUrl, FallbackValue={x:Null}}"
                                              Visibility="{x:Bind vm:Display.Show(Card.HasSupportUrl), FallbackValue=Collapsed}" />
-                            <HyperlinkButton Content="WinDriverIndex page"
-                                             ToolTipService.ToolTip="This model's report on the WinDriverIndex site"
+                            <HyperlinkButton Content="{x:Bind Card.IndexPageText, FallbackValue=''}"
+                                             ToolTipService.ToolTip="{x:Bind Card.IndexPageTip, FallbackValue=''}"
                                              NavigateUri="{x:Bind Card.IndexPageUrl, FallbackValue={x:Null}}"
                                              Visibility="{x:Bind vm:Display.Show(Card.HasIndexPageUrl), FallbackValue=Collapsed}" />
                             <!-- The GPU maker's driver page: the same for every model of the card. -->

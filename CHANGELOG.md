@@ -17,7 +17,8 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
   - The GPU maker's driver page ("Get from NVIDIA"), whichever card maker built the card.
   - Each model in "Pick your model" links its vendor page and WinDriverIndex report, to help tell
     which one you have.
-  - Once a model is chosen, its two pages are also at the top.
+  - At the top: the chosen model's WinDriverIndex report and vendor page or, before you've picked one,
+    "Search WinDriverIndex", the site's catalogue search.
 
 ### Changed
 - **The chip maker's own release** is the one on your driver's numbering line when the maker lists one.
