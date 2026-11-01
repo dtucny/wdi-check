@@ -40,6 +40,10 @@
                         <HyperlinkButton Content="Vendor support page"
                                          NavigateUri="{x:Bind ViewModel.View.SupportUrl, Mode=OneWay}"
                                          Visibility="{x:Bind ViewModel.View.HasSupportUrl, Mode=OneWay, FallbackValue=Collapsed}" />
+                        <HyperlinkButton Content="WinDriverIndex page"
+                                         ToolTipService.ToolTip="This model's report on the WinDriverIndex site"
+                                         NavigateUri="{x:Bind ViewModel.View.IndexPageUrl, Mode=OneWay}"
+                                         Visibility="{x:Bind ViewModel.View.HasIndexPageUrl, Mode=OneWay, FallbackValue=Collapsed}" />
                         <Button Content="Use automatic match" Click="Auto_Click"
                                 Visibility="{x:Bind ViewModel.View.IsBoardOverride, Mode=OneWay, FallbackValue=Collapsed}" />
                     </StackPanel>

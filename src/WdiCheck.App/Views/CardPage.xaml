@@ -45,6 +45,14 @@
                             <HyperlinkButton Content="Vendor support page"
                                              NavigateUri="{x:Bind Card.SupportUrl, FallbackValue={x:Null}}"
                                              Visibility="{x:Bind vm:Display.Show(Card.HasSupportUrl), FallbackValue=Collapsed}" />
+                            <HyperlinkButton Content="WinDriverIndex page"
+                                             ToolTipService.ToolTip="This model's report on the WinDriverIndex site"
+                                             NavigateUri="{x:Bind Card.IndexPageUrl, FallbackValue={x:Null}}"
+                                             Visibility="{x:Bind vm:Display.Show(Card.HasIndexPageUrl), FallbackValue=Collapsed}" />
+                            <!-- The GPU maker's driver page: the same for every model of the card. -->
+                            <HyperlinkButton Content="{x:Bind Card.SiliconLinkText, FallbackValue=''}"
+                                             NavigateUri="{x:Bind Card.SiliconUrl, FallbackValue={x:Null}}"
+                                             Visibility="{x:Bind vm:Display.Show(Card.HasSiliconUrl), FallbackValue=Collapsed}" />
                             <Button Content="Use automatic match" Click="Auto_Click"
                                     Visibility="{x:Bind vm:Display.Show(Card.IsOverride), FallbackValue=Collapsed}" />
                         </StackPanel>
@@ -132,14 +140,26 @@
                                 <StackLayout Spacing="6" />
                             </ItemsRepeater.Layout>
                             <ItemsRepeater.ItemTemplate>
-                                <DataTemplate x:DataType="api:Board">
-                                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Tag="{x:Bind}" Click="Candidate_Click"
-                                            ToolTipService.ToolTip="This is my card">
-                                        <StackPanel>
-                                            <TextBlock Text="{x:Bind Name}" />
-                                            <TextBlock Text="{x:Bind Chipset}" Style="{StaticResource MutedTextStyle}" />
-                                        </StackPanel>
-                                    </Button>
+                                <DataTemplate x:DataType="vm:CardCandidate">
+                                    <!-- Pick the model, or look at its pages first to tell which one you have. -->
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Tag="{x:Bind Board}" Click="Candidate_Click"
+                                                ToolTipService.ToolTip="This is my card">
+                                            <StackPanel>
+                                                <TextBlock Text="{x:Bind Board.Name}" />
+                                                <TextBlock Text="{x:Bind Board.Chipset}" Style="{StaticResource MutedTextStyle}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <HyperlinkButton Grid.Column="1" Content="Vendor page" NavigateUri="{x:Bind SupportUrl}"
+                                                         Visibility="{x:Bind vm:Display.Show(HasSupportUrl)}" />
+                                        <HyperlinkButton Grid.Column="2" Content="WinDriverIndex" NavigateUri="{x:Bind IndexPageUrl}"
+                                                         Visibility="{x:Bind vm:Display.Show(HasIndexPageUrl)}" />
+                                    </Grid>
                                 </DataTemplate>
                             </ItemsRepeater.ItemTemplate>
                         </ItemsRepeater>

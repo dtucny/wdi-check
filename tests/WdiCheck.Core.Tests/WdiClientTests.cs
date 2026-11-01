@@ -18,6 +18,12 @@ public sealed class WdiClientTests : IDisposable
             Directory.Delete(_cache, recursive: true);
     }
 
+    [Theory]
+    [InlineData("https://windriverindex.tucny.com/v1/latest/", 1682, "https://windriverindex.tucny.com/board.html#1682")]
+    [InlineData("https://mirror.example/wdi/v1/latest", 3878, "https://mirror.example/wdi/board.html#3878")]
+    public void BoardPageIsTheSitesPageBesideTheData(string source, int boardId, string expected) =>
+        Assert.Equal(expected, WdiClient.BoardPage(new Uri(source), boardId).AbsoluteUri);
+
     [Fact]
     public async Task DownloadsParsesAndCaches()
     {

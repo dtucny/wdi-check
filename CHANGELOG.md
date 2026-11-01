@@ -9,6 +9,16 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+### Added
+- **Links to the WinDriverIndex site.** The board page links its model's report on the site
+  ("WinDriverIndex page", beside "Vendor support page"), from the configured data source, so a full
+  mirror links its own site.
+- **Graphics card page links.**
+  - The GPU maker's driver page ("Get from NVIDIA"), whichever card maker built the card.
+  - Each model in "Pick your model" links its vendor page and WinDriverIndex report, to help tell
+    which one you have.
+  - Once a model is chosen, its two pages are also at the top.
+
 ### Changed
 - **The chip maker's own release** is the one on your driver's numbering line when the maker lists one.
   Realtek's page now lists NDIS 10.080.50.0407 beside NetAdapterCx 1125.031.50.0603

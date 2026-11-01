@@ -118,6 +118,7 @@ public sealed partial class SnapshotView
                     ? $"Matched from SMBIOS {reason}"
                     : "";
         SupportUrl = s.SelectedBoard?.SupportUrl is { } u && Uri.TryCreate(u, UriKind.Absolute, out var su) && su.Scheme == Uri.UriSchemeHttps ? su : null;
+        IndexPageUrl = s.SelectedBoard is { } ib && s.DataSource is { } source ? WdiClient.BoardPage(source, ib.BoardId) : null;
         BoardError = s.BoardError ?? "";
 
         var installedBios = $"{s.Identity.BiosVersion ?? "unknown"}{(s.Identity.BiosReleaseDate is { } bd ? $" ({Display.Date(bd)})" : "")}";
@@ -176,7 +177,7 @@ public sealed partial class SnapshotView
             "desktop" => "Desktop",
             _ => "Motherboard",
         };
-        Cards = s.Cards.Select(c => new CardView(c)).ToList();
+        Cards = s.Cards.Select(c => new CardView(c, s.DataSource)).ToList();
 
         Candidates = s.BoardCandidates;
         ShowCandidates = s.SelectedBoard is null && s.BoardCandidates.Count > 0;
@@ -319,6 +320,10 @@ public sealed partial class SnapshotView
     public string BoardMatchText { get; }
     public Uri? SupportUrl { get; }
     public bool HasSupportUrl => SupportUrl is not null;
+
+    /// <summary>The model's page on the WinDriverIndex site: the same report, with its history and the other models.</summary>
+    public Uri? IndexPageUrl { get; }
+    public bool HasIndexPageUrl => IndexPageUrl is not null;
     public string BoardError { get; }
     public bool HasBoardError => BoardError.Length > 0;
     public string InstalledBiosText { get; }

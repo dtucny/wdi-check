@@ -56,6 +56,12 @@ public sealed class WdiClient
 
     public Uri BaseUri { get; }
 
+    /// <summary>
+    /// The WinDriverIndex site's page for a board or graphics card: <c>board.html#id</c>, two levels above the data
+    /// (<c>/v1/latest/</c>). A mirror of the whole site gets its own page.
+    /// </summary>
+    public static Uri BoardPage(Uri dataBase, int boardId) => new(EnsureTrailingSlash(dataBase), $"../../board.html#{boardId}");
+
     public TimeSpan MaxAge { get; init; } = DefaultMaxAge;
 
     public string CacheDirectory => _cacheDir;
