@@ -4,10 +4,17 @@ using WdiCheck.Core.Matching;
 
 namespace WdiCheck.App.ViewModels;
 
+/// <summary>A model the card could be, with its pages: the maker's support page and its WinDriverIndex report.</summary>
+public sealed record CardCandidate(Board Board, Uri? SupportUrl, Uri? IndexPageUrl)
+{
+    public bool HasSupportUrl => SupportUrl is not null;
+    public bool HasIndexPageUrl => IndexPageUrl is not null;
+}
+
 /// <summary>What a graphics card's page shows: the card as far as it can be told, its VBIOS and the maker's listing.</summary>
 public sealed partial class CardView
 {
-    public CardView(CardAssessment a)
+    public CardView(CardAssessment a, Uri? dataSource = null)
     {
         Assessment = a;
         var card = a.Card;
@@ -21,10 +28,15 @@ public sealed partial class CardView
             Title = $"{Display.Vendor(s.Vendor)} {s.Name}";
             Subtitle = card.Gpu.Device.Name;
             MatchText = a.IsOverride ? "Chosen by you" : $"The only {maker} card on this GPU in the catalogue";
-            SupportUrl = s.SupportUrl is { } u && Uri.TryCreate(u, UriKind.Absolute, out var su) && su.Scheme == Uri.UriSchemeHttps ? su : null;
+            SupportUrl = Https(s.SupportUrl);
+            IndexPageUrl = dataSource is null ? null : WdiClient.BoardPage(dataSource, s.BoardId);
         }
         else
         {
+            // No one report for "one of 20": the site's search, where the models can be compared.
+            IndexPageUrl = dataSource is null ? null : WdiClient.BoardSearch(dataSource);
+            IndexPageText = "Search WinDriverIndex";
+            IndexPageTip = $"Search the WinDriverIndex catalogue for this card's models (e.g. “{ShortGpuName(card.Gpu.Device.Name)}”)";
             Title = $"{maker} {card.Gpu.Device.Name}";
             Subtitle = count == 0
                 ? $"This card isn't in the WinDriverIndex catalogue."
@@ -32,7 +44,8 @@ public sealed partial class CardView
             MatchText = count == 0 ? "" : "Identified by the GPU and the card maker's PCI IDs, which a maker's models on one GPU share";
         }
         IdText = card.Key;
-        Candidates = card.Candidates;
+        Candidates = card.Candidates.Select(b => new CardCandidate(b, Https(b.SupportUrl),
+            dataSource is null ? null : WdiClient.BoardPage(dataSource, b.BoardId))).ToList();
         CandidatesHeader = a.IsOverride
             ? $"Change your model ({count} match these PCI IDs)"
             : $"Pick your model ({count} match these PCI IDs)";
@@ -49,6 +62,13 @@ public sealed partial class CardView
             ? $"{installed} (= {iv.Raw})"
             : installed;
         (StatusText, StatusSeverity) = Display.Status(gpu);
+        // The GPU maker's own driver page (NVIDIA's for any maker's RTX card), else the family's download hint.
+        if (gpu.Family is { } gpuFamily)
+        {
+            SiliconUrl = MachineHardware.NewestListedBySilicon(gpuFamily, gpu.Device.DriverVersion)?.Url
+                         ?? Https(Core.Reporting.DownloadLinks.Hint(gpu)?.Url);
+            SiliconLinkText = $"Get from {Display.SiliconVendor(gpuFamily.Family.SiliconVendor) ?? "the GPU maker"}";
+        }
         NewestText = gpu.Status == DriverStatus.Behind && gpu.Target is { } t
             ? $"Newest: {t.Raw}" + (t.Date is { } d ? $" ({Display.Date(d)})" : "")
             : "";
@@ -100,9 +120,19 @@ public sealed partial class CardView
     public string IdText { get; }
     public Uri? SupportUrl { get; }
     public bool HasSupportUrl => SupportUrl is not null;
+    /// <summary>The chosen model's report on the WinDriverIndex site; without one, the site's search.</summary>
+    public Uri? IndexPageUrl { get; }
+    public bool HasIndexPageUrl => IndexPageUrl is not null;
+    public string IndexPageText { get; } = "WinDriverIndex page";
+    public string IndexPageTip { get; } = "This model's report on the WinDriverIndex site";
+
+    /// <summary>"Get from NVIDIA": the GPU maker's driver page, whichever card maker built the card.</summary>
+    public Uri? SiliconUrl { get; }
+    public string SiliconLinkText { get; } = "";
+    public bool HasSiliconUrl => SiliconUrl is not null;
     public bool IsOverride => Assessment.IsOverride;
 
-    public IReadOnlyList<Board> Candidates { get; }
+    public IReadOnlyList<CardCandidate> Candidates { get; }
     public string CandidatesHeader { get; }
     public bool HasCandidates => Candidates.Count > 1 || (Candidates.Count == 1 && IsOverride);
 
@@ -134,6 +164,9 @@ public sealed partial class CardView
     public bool HasFamilies => Families.Count > 0;
     public string ReferenceText { get; } = "";
     public bool HasReference => ReferenceText.Length > 0;
+
+    private static Uri? Https(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps ? u : null;
 
     /// <summary>"NVIDIA GeForce RTX 4070 Ti" → "RTX 4070 Ti"; "AMD Radeon(TM) RX 9070 XT" → "RX 9070 XT".</summary>
     internal static string ShortGpuName(string name) =>

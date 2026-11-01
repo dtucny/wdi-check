@@ -35,6 +35,9 @@ public sealed record ScanSnapshot
     public BoardAssessment? Board { get; init; }
     public string? BoardError { get; init; }
 
+    /// <summary>The data source the scan read (<see cref="WdiClient.BaseUri"/>), for links to its site's pages.</summary>
+    public Uri? DataSource { get; init; }
+
     /// <summary>Add-in graphics cards, each with the catalogue's cards it could be.</summary>
     public IReadOnlyList<CardAssessment> Cards { get; init; } = [];
 }
@@ -119,6 +122,7 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
             Identity = identity,
             BoardCandidates = candidates,
             Freshness = freshness,
+            DataSource = client.BaseUri,
         };
 
         var cards = CardMatcher.Find(results, boards.Value.Data);
