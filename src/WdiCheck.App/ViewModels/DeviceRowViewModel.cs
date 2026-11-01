@@ -22,6 +22,11 @@ public sealed class DeviceRowViewModel
         Result = r;
         var d = r.Device;
         Name = d.Name;
+        // "silicon" is the chip maker's own listing: name the maker (Realtek), as the Overview does.
+        string VendorName(string? v) =>
+            string.Equals(v, "silicon", StringComparison.OrdinalIgnoreCase) && Display.SiliconVendor(r.Family?.Family.SiliconVendor) is { } maker
+                ? maker
+                : Display.Vendor(v);
         Family = r.Family?.Name ?? d.Class ?? "";
         Subtitle = r.Family is not null ? r.Family.Name : string.Join(" · ", new[] { d.Class, d.DriverProvider }.Where(s => !string.IsNullOrEmpty(s)));
         Installed = d.DriverVersion ?? "—";
@@ -41,11 +46,12 @@ public sealed class DeviceRowViewModel
         FamilyNewest = r.Family?.Water?.Version ?? "—";
         FamilyNewestDate = Display.Date(r.Family?.WaterDate);
         FamilyNewestSources = r.Family?.Water is { } w
-            ? string.Join(", ", (w.PublishedBy ?? []).Select(Display.Vendor)) + (w.UpstreamOnly ? " (upstream only)" : "")
+            ? string.Join(", ", (w.PublishedBy ?? []).Select(VendorName)) + (w.UpstreamOnly ? " (upstream only)" : "")
             : "";
-        // The family's newest is a package version (AMD's chipset package 7.12.30.211); this driver an INF in it (1.0.0.12).
+        // The family's newest on another numbering line: a package version (AMD's chipset package 8.09.28.1124 against
+        // its INFs at 1.0.0.12), or a parallel driver (Realtek NetAdapterCx 1125.x against NDIS 10.x).
         if (r.Family is { Water: not null } fw && r.Installed?.Line is { } il && fw.Effective(fw.Water.Version).Line is { } wl && wl != il)
-            FamilyNewestSources += " · a package version, numbered differently from this driver";
+            FamilyNewestSources += " · numbered differently from this driver";
         (StatusText, Severity) = Display.Status(r);
         GroupKey = r.Status switch
         {
@@ -78,7 +84,7 @@ public sealed class DeviceRowViewModel
         Links = DownloadLinks.For(r.Target, boardVendor)
             .Take(6)
             .Select(l => new LinkItem(
-                $"{Display.Vendor(l.Vendor)} · {(l.Contains is null ? "" : "package ")}{l.Version}",
+                $"{VendorName(l.Vendor)} · {(l.Contains is null ? "" : "package ")}{l.Version}",
                 string.Join(" · ", new[] { l.IsBoardVendor ? "Your board vendor" : null, l.ReleaseDate,
                     l.Contains is null ? null : $"contains {l.Contains}" }.Where(x => !string.IsNullOrEmpty(x))),
                 l.Url.AbsoluteUri,

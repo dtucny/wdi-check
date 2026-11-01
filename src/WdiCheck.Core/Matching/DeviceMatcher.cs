@@ -222,13 +222,18 @@ public sealed class DeviceMatcher(DriverIndex index, InfIndex? infs = null)
             .SelectMany(r => r.Artefacts)
             .DistinctBy(a => a.ArtefactId)
             .ToList();
-        // INFs from a chip vendor's own installer carry no artefacts: link the vendor's listing published that day.
-        if (sameBuild.Count == 0 && newest.IsFromSilicon && family is not null)
+        // INFs from a chip vendor's own installer carry no artefacts: link the vendor's listing of the same build
+        // (Realtek lists NDIS at the INF's 10.080.50.0407, beside ASRock's and Dell's packages), else the listing
+        // it published that day (AMD lists one package version for two installers).
+        if (newest.IsFromSilicon && family is not null)
         {
-            sameBuild = family.Versions.SelectMany(v => v.Artefacts)
-                .Where(a => a.IsBeta == 0 && a.Vendor.Equals("silicon", StringComparison.OrdinalIgnoreCase)
-                            && FamilyInfo.ParseDate(a.ReleaseDate) == newest.FirstPublished)
+            var silicon = family.Versions.SelectMany(v => v.Artefacts)
+                .Where(a => a.IsBeta == 0 && a.Vendor.Equals("silicon", StringComparison.OrdinalIgnoreCase))
                 .ToList();
+            var listed = silicon.Where(a => family.Effective(a.VersionRaw).Equals(family.Effective(newest.Row.DriverVer))).ToList();
+            if (listed.Count == 0 && sameBuild.Count == 0)
+                listed = silicon.Where(a => FamilyInfo.ParseDate(a.ReleaseDate) == newest.FirstPublished).ToList();
+            sameBuild = sameBuild.Concat(listed).DistinctBy(a => a.ArtefactId).ToList();
         }
         var newestRef = VersionRef.From(newest) with { Artefacts = sameBuild, InfName = newest.InfName };
 
