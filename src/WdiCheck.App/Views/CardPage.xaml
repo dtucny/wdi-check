@@ -7,8 +7,10 @@
     xmlns:api="using:WdiCheck.Core.Api"
     xmlns:views="using:WdiCheck.App.Views">
 
-    <ScrollViewer>
-        <StackPanel MaxWidth="1100" Padding="32,20,32,40" Spacing="16">
+    <!-- The column's width is pinned to the viewport (code-behind): left to itself it took its content's natural width
+         (~840 px), was centred, and its full-width children spilled off the right edge. -->
+    <ScrollViewer SizeChanged="Scroller_SizeChanged">
+        <StackPanel x:Name="Column" MaxWidth="1100" Padding="32,20,32,40" Spacing="16">
             <StackPanel>
                 <TextBlock Text="Graphics card" Style="{StaticResource TitleTextBlockStyle}" />
                 <TextBlock Text="{x:Bind Card.IdText, FallbackValue=''}" Style="{StaticResource MutedTextStyle}" IsTextSelectionEnabled="True" />
@@ -65,38 +67,15 @@
                 </Border>
 
                 <InfoBar Severity="Warning" IsClosable="False" Title="Couldn't load every listing for this card"
-                         IsOpen="{x:Bind Card.HasError, FallbackValue=False}"
+                         IsOpen="{x:Bind Card.HasError, FallbackValue=False}" Visibility="{x:Bind vm:Display.Show(Card.HasError), FallbackValue=Collapsed}"
                          Message="{x:Bind Card.Error, FallbackValue=''}" />
 
-                <!-- Which model: asked for only when it would change the page (a model lists a VBIOS). -->
-                <StackPanel Spacing="8" Visibility="{x:Bind vm:Display.Show(Card.HasCandidates), FallbackValue=Collapsed}">
-                    <InfoBar Severity="Informational" IsOpen="{x:Bind Card.ModelMatters, FallbackValue=False}" IsClosable="False"
-                             Title="Which one is yours?"
-                             Message="The PCI IDs Windows reports are shared by these models, and some of them list a VBIOS. Pick yours, or search above." />
-                    <TextBlock Text="{x:Bind Card.ModelNote, FallbackValue=''}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"
-                               Visibility="{x:Bind vm:Display.Show(Card.HasModelNote), FallbackValue=Collapsed}" />
-                    <Expander Header="{x:Bind Card.CandidatesHeader, FallbackValue=''}"
-                              IsExpanded="{x:Bind Card.ModelMatters, FallbackValue=False}"
-                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                        <ItemsRepeater ItemsSource="{x:Bind Card.Candidates, FallbackValue={x:Null}}">
-                            <ItemsRepeater.Layout>
-                                <StackLayout Spacing="6" />
-                            </ItemsRepeater.Layout>
-                            <ItemsRepeater.ItemTemplate>
-                                <DataTemplate x:DataType="api:Board">
-                                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Tag="{x:Bind}" Click="Candidate_Click"
-                                            ToolTipService.ToolTip="This is my card">
-
-                                        <StackPanel>
-                                            <TextBlock Text="{x:Bind Name}" />
-                                            <TextBlock Text="{x:Bind Chipset}" Style="{StaticResource MutedTextStyle}" />
-                                        </StackPanel>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsRepeater.ItemTemplate>
-                        </ItemsRepeater>
-                    </Expander>
-                </StackPanel>
+                <!-- Asked for only when it would change the page (a model lists a VBIOS); the list is at the bottom. A closed InfoBar
+                     still takes the panel's spacing, so these are collapsed too. -->
+                <InfoBar Severity="Informational" IsOpen="{x:Bind Card.ModelMatters, FallbackValue=False}" IsClosable="False"
+                         Visibility="{x:Bind vm:Display.Show(Card.ModelMatters), FallbackValue=Collapsed}"
+                         Title="Which one is yours?"
+                         Message="The PCI IDs Windows reports are shared by several models, and some of them list a VBIOS. Pick yours below, or search above." />
 
                 <!-- Driver + VBIOS -->
                 <Border Style="{StaticResource CardStyle}">
@@ -138,6 +117,33 @@
                     <TextBlock Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"
                                Text="Read each row left to right: the driver installed here, against what the card maker's support page offers; then the maker's version, against the newest release anywhere. Where the possible models list different versions, both ends are shown." />
                     <views:ListingTable ItemsSource="{x:Bind Card.Families, FallbackValue={x:Null}}" Vendor="{x:Bind Card.Vendor, FallbackValue=''}" />
+                </StackPanel>
+
+                <!-- Which model, last: expanding the list then pushes nothing else down. -->
+                <StackPanel Spacing="8" Visibility="{x:Bind vm:Display.Show(Card.HasCandidates), FallbackValue=Collapsed}">
+                    <TextBlock Text="Your model" Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock Text="{x:Bind Card.ModelNote, FallbackValue=''}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"
+                               Visibility="{x:Bind vm:Display.Show(Card.HasModelNote), FallbackValue=Collapsed}" />
+                    <Expander Header="{x:Bind Card.CandidatesHeader, FallbackValue=''}"
+                              IsExpanded="{x:Bind Card.ModelMatters, FallbackValue=False}"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                        <ItemsRepeater ItemsSource="{x:Bind Card.Candidates, FallbackValue={x:Null}}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="6" />
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="api:Board">
+                                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Tag="{x:Bind}" Click="Candidate_Click"
+                                            ToolTipService.ToolTip="This is my card">
+                                        <StackPanel>
+                                            <TextBlock Text="{x:Bind Name}" />
+                                            <TextBlock Text="{x:Bind Chipset}" Style="{StaticResource MutedTextStyle}" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+                    </Expander>
                 </StackPanel>
             </StackPanel>
         </StackPanel>

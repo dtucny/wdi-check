@@ -39,6 +39,9 @@ public sealed partial class CardPage : Page
             Bindings.Update();
     }
 
+    private void Scroller_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        Column.Width = Math.Min(Column.MaxWidth, e.NewSize.Width);
+
     private void CardSearch_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
