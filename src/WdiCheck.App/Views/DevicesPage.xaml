@@ -234,7 +234,7 @@
                                                  Visibility="{x:Bind Selected.HasHint, Mode=OneWay}">
                                     <StackPanel>
                                         <TextBlock Text="{x:Bind Selected.HintLabel, Mode=OneWay}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                        <TextBlock Text="The chip maker's own driver tool or page" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{x:Bind Selected.HintDetail, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </HyperlinkButton>
                                 <TextBlock Style="{StaticResource MutedTextStyle}"

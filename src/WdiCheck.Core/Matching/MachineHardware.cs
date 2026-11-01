@@ -139,7 +139,7 @@ public static partial class MachineHardware
     }
 
     /// <summary>The newest non-beta version a chip vendor published itself, with its download page.</summary>
-    internal static SiliconRelease? NewestListedBySilicon(FamilyInfo family, string? installed)
+    public static SiliconRelease? NewestListedBySilicon(FamilyInfo family, string? installed)
     {
         foreach (var known in family.Versions)
         {

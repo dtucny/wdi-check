@@ -73,6 +73,8 @@
                     <InfoBar Severity="Informational" IsOpen="{x:Bind Card.ModelMatters, FallbackValue=False}" IsClosable="False"
                              Title="Which one is yours?"
                              Message="The PCI IDs Windows reports are shared by these models, and some of them list a VBIOS. Pick yours, or search above." />
+                    <TextBlock Text="{x:Bind Card.ModelNote, FallbackValue=''}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"
+                               Visibility="{x:Bind vm:Display.Show(Card.HasModelNote), FallbackValue=Collapsed}" />
                     <Expander Header="{x:Bind Card.CandidatesHeader, FallbackValue=''}"
                               IsExpanded="{x:Bind Card.ModelMatters, FallbackValue=False}"
                               HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
@@ -82,7 +84,9 @@
                             </ItemsRepeater.Layout>
                             <ItemsRepeater.ItemTemplate>
                                 <DataTemplate x:DataType="api:Board">
-                                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Tag="{x:Bind}" Click="Candidate_Click">
+                                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Tag="{x:Bind}" Click="Candidate_Click"
+                                            ToolTipService.ToolTip="This is my card">
+
                                         <StackPanel>
                                             <TextBlock Text="{x:Bind Name}" />
                                             <TextBlock Text="{x:Bind Chipset}" Style="{StaticResource MutedTextStyle}" />

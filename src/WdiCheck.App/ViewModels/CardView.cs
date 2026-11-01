@@ -33,7 +33,13 @@ public sealed partial class CardView
         }
         IdText = card.Key;
         Candidates = card.Candidates;
-        CandidatesHeader = count == 1 ? "1 model in the catalogue" : $"Models this could be ({count})";
+        CandidatesHeader = a.IsOverride
+            ? $"Change your model ({count} match these PCI IDs)"
+            : $"Pick your model ({count} match these PCI IDs)";
+        // Without a prompt, say why: the models share what this page shows, so picking only adds the support page.
+        if (a.Selected is null && count > 1 && !a.ModelMatters)
+            ModelNote = "Which of these you have doesn't change this page: none lists a VBIOS, and their driver listings are the same. " +
+                        "Pick yours to link its support page.";
         Error = a.Error ?? "";
 
         // Installed driver: the GPU's own status, in the family's numbering where it has one (NVIDIA 32.0.16.2101 = 621.01).
@@ -102,6 +108,10 @@ public sealed partial class CardView
 
     /// <summary>A candidate lists a VBIOS, so the exact model would change the page: ask for it.</summary>
     public bool ModelMatters => Assessment.ModelMatters;
+
+    /// <summary>Why the page doesn't ask for the model, when it doesn't.</summary>
+    public string ModelNote { get; } = "";
+    public bool HasModelNote => ModelNote.Length > 0;
 
     public string Error { get; }
     public bool HasError => Error.Length > 0;

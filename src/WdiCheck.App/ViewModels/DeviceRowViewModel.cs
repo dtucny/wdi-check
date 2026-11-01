@@ -90,6 +90,18 @@ public sealed class DeviceRowViewModel
             HintLabel = hint.Label;
             HintUrl = hint.Url!;
         }
+        // No hint: the chip maker's own download page, even when its newest is on another line (Realtek lists the
+        // NDIS 10.x and NetAdapter 1125.x drivers on one page; the index only records the 1125.x release).
+        else if (r.Family is { } chipFamily && MachineHardware.NewestListedBySilicon(chipFamily, d.DriverVersion) is { Url: { } siliconUrl } s
+                 && !Links.Any(l => l.Url == siliconUrl.AbsoluteUri))
+        {
+            var maker = Display.SiliconVendor(chipFamily.Family.SiliconVendor) ?? "The chip maker";
+            HintLabel = $"{maker}'s driver downloads";
+            HintDetail = s.SameNumbering
+                ? $"The chip maker's own page (newest there: {s.Version})"
+                : $"The chip maker's own page; the newest it lists, {s.Version}, is numbered differently from this driver";
+            HintUrl = siliconUrl.AbsoluteUri;
+        }
 
         ParallelNote = r.ParallelLine is { } p
             ? $"The family's newest release, {p.Version} ({Display.Date(p.FirstPublished)}), is on a different numbering line. " +
@@ -235,6 +247,7 @@ public sealed class DeviceRowViewModel
     /// <summary>The family's generic driver source (e.g. NVIDIA App), when the index names one.</summary>
     public string HintLabel { get; } = "";
     public string HintUrl { get; } = "";
+    public string HintDetail { get; } = "The chip maker's own driver tool or page";
 
     public bool HasHint => HintUrl.Length > 0;
     public bool HasLinks => Links.Count > 0;

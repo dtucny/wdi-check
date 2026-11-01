@@ -18,7 +18,8 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
     (20 MSI cards for an RTX 4070 Ti).
   - The page asks which model you have only when the answer would change it, meaning one of the
     candidates lists a VBIOS. Otherwise it shows the maker's listing, which the models share, or both
-    ends of it where it differs. You can always pick or search, and the choice is remembered.
+    ends of it where it differs, and says why it didn't ask. You can always pick from the list or
+    search, and the choice is remembered.
   - Makers that only link to the GPU maker's driver (MSI) get that driver's newest release instead.
   - Subsystem device IDs, once WinDriverIndex publishes them
     ([WinDriverIndex#12](https://github.com/dtucny/WinDriverIndex/issues/12)), will narrow the match
@@ -47,6 +48,9 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 - Drivers: long download link names wrap instead of running off the pane. The section is titled
   "Where to get it" for a driver that's already current. "Family newest" says when it's a package
   version numbered differently from the driver (AMD's chipset package against its INFs).
+- Drivers: a family without a download hint links the chip maker's own page, saying when its newest
+  is on another numbering line. Realtek's page carries both the NDIS 10.x and the NetAdapter 1125.x
+  drivers.
 
 ## [0.2.8] - 2026-11-01
 
