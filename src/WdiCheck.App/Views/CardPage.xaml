@@ -7,8 +7,10 @@
     xmlns:api="using:WdiCheck.Core.Api"
     xmlns:views="using:WdiCheck.App.Views">
 
-    <ScrollViewer>
-        <StackPanel MaxWidth="1100" Padding="32,20,32,40" Spacing="16">
+    <!-- The column's width is pinned to the viewport (code-behind): left to itself it took its content's natural width
+         (~840 px), was centred, and its full-width children spilled off the right edge. -->
+    <ScrollViewer SizeChanged="Scroller_SizeChanged">
+        <StackPanel x:Name="Column" MaxWidth="1100" Padding="32,20,32,40" Spacing="16">
             <StackPanel>
                 <TextBlock Text="Graphics card" Style="{StaticResource TitleTextBlockStyle}" />
                 <TextBlock Text="{x:Bind Card.IdText, FallbackValue=''}" Style="{StaticResource MutedTextStyle}" IsTextSelectionEnabled="True" />

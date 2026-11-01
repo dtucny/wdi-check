@@ -11,7 +11,7 @@ support listing for it, including BIOS currency.
 
 WdiCheck only reads. It never downloads or installs drivers; links go to the listing's own page.
 
-![WdiCheck overview: driver status counts, the identified motherboard with its BIOS status, and the drivers that need attention](doc/images/overview.png)
+![WdiCheck overview: driver status counts, Windows Update's offers, and the identified motherboard with its BIOS status, processor and GPUs, each against MSI's listing and the newest release](doc/images/overview.png)
 
 ## What you see
 
@@ -37,15 +37,22 @@ WdiCheck only reads. It never downloads or installs drivers; links go to the lis
 ### Screenshots
 
 **Drivers**: each device with its installed and newest version. The detail pane shows how the
-driver was matched (here, the installed `rt640x64.inf`), the release it's compared with, a note
-about the parallel NetAdapter line, and where to get the update.
+driver was matched (here, the installed `rt640x64.inf`), the release it's compared with, how it
+stands against the board vendor's listing, and where to get the update.
 
-![Drivers page with the Realtek 2.5GbE controller selected: installed 10.79.50.1003, newest 10.080.0407.2026, 186 days behind](doc/images/drivers.png)
+![Drivers page with the Realtek 2.5GbE controller selected: installed 10.79.50.1003, newest 10.080.50.0407, 186 days behind, and current with MSI's listing](doc/images/drivers.png)
 
 **This PC › Motherboard**: the machine identified from its SMBIOS board code, BIOS currency, and the
-vendor's driver listing next to what's installed.
+vendor's driver listing. Each row reads left to right: what's installed against MSI's version, then
+MSI's version against the newest anywhere.
 
-![Board page for an MSI MPG B650I EDGE WIFI: BIOS 73 days behind, and the vendor's per-family driver listing with an Installed here column](doc/images/board.png)
+![Board page for an MSI MPG B650I EDGE WIFI: BIOS current, and MSI's per-family driver listing with installed versions marked Current with MSI or Ahead of MSI, and how far MSI's versions are behind the newest](doc/images/board.png)
+
+**This PC › graphics card**: an add-in card identified from its PCI IDs. Here, 20 MSI cards share the
+RTX 4070 Ti's IDs, none lists a VBIOS, and MSI links to NVIDIA's driver, so the page doesn't need to
+know which one it is.
+
+![Graphics card page for an MSI RTX 4070 Ti: one of 20 MSI models, with the list of models to pick from](doc/images/card.png)
 
 ### Statuses
 
