@@ -177,7 +177,8 @@ src/WdiCheck.Core/         API client + cache, version parsing, family & INF ind
 src/WdiCheck.App/          WinUI 3 app (MVVM, CommunityToolkit.Mvvm)
 tests/WdiCheck.Core.Tests/ xUnit tests (fixtures built from real index rows)
 scripts/                   build, release notes, dev certificate, asset generation
-.github/workflows/         release build on version tags
+.github/workflows/         CI build and tests on PRs and main; release build on version tags
+.github/dependabot.yml     weekly NuGet, .NET SDK and Actions updates
 CHANGELOG.md               release notes
 ```
 
