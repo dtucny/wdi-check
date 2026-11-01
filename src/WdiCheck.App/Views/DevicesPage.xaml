@@ -199,7 +199,7 @@
                                         <Run Text="{x:Bind Selected.LineNewestDetail, Mode=OneWay}" />
                                     </TextBlock>
                                 </StackPanel>
-                                <TextBlock Grid.Row="2" Text="Family newest" Style="{StaticResource MutedTextStyle}" />
+                                <TextBlock Grid.Row="2" Text="{x:Bind Selected.FamilyNewestLabel, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" />
                                 <StackPanel Grid.Row="2" Grid.Column="1">
                                     <TextBlock Text="{x:Bind Selected.FamilyNewest, Mode=OneWay}" Style="{StaticResource VersionTextStyle}" />
                                     <TextBlock Style="{StaticResource MutedTextStyle}">
@@ -223,10 +223,6 @@
                                 <HyperlinkButton Content="{x:Bind Selected.WindowsUpdateButtonText, Mode=OneWay}" Click="OpenWindowsUpdate_Click" Padding="0,2"
                                                  Visibility="{x:Bind Selected.HasWindowsUpdateUpdate, Mode=OneWay, FallbackValue=Collapsed}" />
                             </StackPanel>
-
-                            <InfoBar Severity="Informational" IsClosable="False" Title="Different version line"
-                                     IsOpen="{x:Bind Selected.HasParallelNote, Mode=OneWay, FallbackValue=False}"
-                                     Message="{x:Bind Selected.ParallelNote, Mode=OneWay}" />
 
                             <StackPanel Spacing="4" Visibility="{x:Bind Selected.HasUpdateSources, Mode=OneWay}">
                                 <TextBlock Text="{x:Bind Selected.UpdateSourcesHeader, Mode=OneWay}" Style="{StaticResource SectionHeaderStyle}" />
