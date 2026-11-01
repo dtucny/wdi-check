@@ -39,7 +39,11 @@ public sealed partial class OverviewPage : Page
 
     private void Hardware_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { Tag: HardwareRowViewModel row })
+        if (sender is FrameworkElement { Tag: HardwareRowViewModel { CardKey: { } key } })
+        {
+            App.Window.NavigateTo(MainWindow.CardTag(key));
+        }
+        else if (sender is FrameworkElement { Tag: HardwareRowViewModel row })
         {
             ViewModel.StatusFilter = row.Filter;
             ViewModel.SearchText = row.SearchName;

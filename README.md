@@ -21,10 +21,17 @@ WdiCheck only reads. It never downloads or installs drivers; links go to the lis
   comparable release and a status. The detail pane explains the match: which hardware ID hit,
   which families share it and why one was chosen, the releases on the same version line, and
   download links (your board vendor's first).
-- **This PC's board** – the vendor listing for your motherboard or laptop (the site's
-  `by-board` report), with an *Installed here* column, BIOS installed vs newest listed, and AGESA
-  status on AMD boards. If automatic matching is wrong or ambiguous, search the catalogue and pick
-  your model (remembered).
+- **This PC** – a page for the motherboard or laptop, and one for each add-in graphics card.
+  - **Board page:** the vendor's listing for your model (the site's `by-board` report), BIOS
+    installed vs newest listed, and AGESA status on AMD boards. Each row reads left to right: your
+    driver against the vendor's ("Current with MSI", "234 d behind MSI"), then the vendor's against the
+    newest anywhere ("299 d behind newest"). So you can tell an update your vendor supports from a
+    newer build that only exists elsewhere.
+  - **Card pages:** the card maker's listing and VBIOS. Makers like MSI that link to NVIDIA's driver
+    get NVIDIA's newest release instead.
+  - **Choosing a model:** if matching is wrong or ambiguous, search the catalogue and pick your model
+    (remembered). A card's PCI IDs are shared by a maker's models on one GPU, so the page asks for the
+    model only when it matters: when one of them lists a VBIOS.
 - **Settings** – theme, data source (any mirror of `/v1/latest/`), offline cache, attribution.
 
 ### Screenshots
@@ -35,7 +42,7 @@ about the parallel NetAdapter line, and where to get the update.
 
 ![Drivers page with the Realtek 2.5GbE controller selected: installed 10.79.50.1003, newest 10.080.0407.2026, 186 days behind](doc/images/drivers.png)
 
-**This PC's board**: the machine identified from its SMBIOS board code, BIOS currency, and the
+**This PC › Motherboard**: the machine identified from its SMBIOS board code, BIOS currency, and the
 vendor's driver listing next to what's installed.
 
 ![Board page for an MSI MPG B650I EDGE WIFI: BIOS 73 days behind, and the vendor's per-family driver listing with an Installed here column](doc/images/board.png)

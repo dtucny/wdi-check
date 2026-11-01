@@ -43,7 +43,8 @@
                         <FontIcon Glyph="&#xE950;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="This PC's board" Tag="board">
+                <!-- With an add-in graphics card, children list the board and each card (code-behind). -->
+                <NavigationViewItem x:Name="ThisPcItem" Content="This PC" Tag="board">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE770;" />
                     </NavigationViewItem.Icon>

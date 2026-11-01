@@ -10,10 +10,14 @@ public sealed record KnownVersionItem(string Version, string Date, string Source
 
 public sealed record LinkItem(string Title, string Detail, string Url, bool IsBoardVendor);
 
+/// <summary>A driver against the listing of the product it belongs to: "MSI", "board" (or "laptop", "card").</summary>
+public sealed record VendorListing(VendorComparison Comparison, string Vendor, string Product);
+
 /// <summary>One row in the Drivers list, plus everything the detail pane shows.</summary>
 public sealed class DeviceRowViewModel
 {
-    public DeviceRowViewModel(DeviceResult r, string? boardVendor, WindowsUpdateInfo? windowsUpdate = null, SystemIdentity? identity = null)
+    public DeviceRowViewModel(DeviceResult r, string? boardVendor, WindowsUpdateInfo? windowsUpdate = null, SystemIdentity? identity = null,
+        VendorListing? vendor = null)
     {
         Result = r;
         var d = r.Device;
@@ -39,6 +43,9 @@ public sealed class DeviceRowViewModel
         FamilyNewestSources = r.Family?.Water is { } w
             ? string.Join(", ", (w.PublishedBy ?? []).Select(Display.Vendor)) + (w.UpstreamOnly ? " (upstream only)" : "")
             : "";
+        // The family's newest is a package version (AMD's chipset package 7.12.30.211); this driver an INF in it (1.0.0.12).
+        if (r.Family is { Water: not null } fw && r.Installed?.Line is { } il && fw.Effective(fw.Water.Version).Line is { } wl && wl != il)
+            FamilyNewestSources += " · a package version, numbered differently from this driver";
         (StatusText, Severity) = Display.Status(r);
         GroupKey = r.Status switch
         {
@@ -137,6 +144,35 @@ public sealed class DeviceRowViewModel
             _ => "",
         };
 
+        // Behind the vendor (an update the vendor supports) or the vendor behind the newest (an update from elsewhere).
+        Vendor = vendor;
+        IsBehindVendor = vendor?.Comparison.Standing == VendorStanding.Behind;
+        if (vendor is { Comparison: var vc, Vendor: var v, Product: var product })
+        {
+            (VendorPill, VendorSeverity) = Display.Standing(vc, v);
+            if (vc.Listed is { } listed)
+            {
+                VendorLatest = $"{v}'s latest: {listed}" + (vc.ListedDate is { } ld ? $" ({ld})" : "");
+                VendorLine = VendorLatest +
+                             (vc.VendorVersion is { } build && !WdiCheck.Core.Versions.DriverVersion.Parse(build).Equals(WdiCheck.Core.Versions.DriverVersion.Parse(listed))
+                                 ? $", with this driver at {build}"
+                                 : "");
+            }
+            VendorText = vc.Standing switch
+            {
+                VendorStanding.Behind =>
+                    $"{v}'s listing for this {product} has a newer build, {vc.VendorVersion}" +
+                    (vc.LagDays is { } lag ? $" ({lag} days newer)" : "") + $". This is an update {v} supports: get it from {v}'s support page.",
+                VendorStanding.Same when r.Status == DriverStatus.Behind =>
+                    $"This is the build {v} lists for this {product}. The newer build isn't on {v}'s listing; it comes from the chip vendor or another manufacturer.",
+                VendorStanding.Same => $"This is the build {v} lists for this {product}.",
+                VendorStanding.Newer when r.Status == DriverStatus.Behind =>
+                    $"Newer than the build {v} lists for this {product} ({vc.VendorVersion}), and a newer build still exists elsewhere.",
+                VendorStanding.Newer => $"Newer than the build {v} lists for this {product} ({vc.VendorVersion}).",
+                _ => "",
+            };
+        }
+
         if (HasWindowsUpdateUpdate && r.Status != DriverStatus.Behind)
         {
             AttentionDetail = $"{(string.IsNullOrEmpty(Provider) ? Family : Provider)} · {Installed} → {offer!.Version?.Raw ?? "newer"} from Windows Update";
@@ -146,7 +182,7 @@ public sealed class DeviceRowViewModel
         else
         {
             AttentionDetail = $"{Family} · {Installed} → {Newest}";
-            AttentionPill = StatusText;
+            AttentionPill = PairedStatusText;
             AttentionSeverity = Severity;
         }
 
@@ -218,7 +254,37 @@ public sealed class DeviceRowViewModel
     public string AttentionDetail { get; }
     public string AttentionPill { get; }
     public Severity AttentionSeverity { get; }
+    /// <summary>The installed driver against its board's or card's vendor listing (empty when it can't be compared).</summary>
+    public string VendorPill { get; } = "";
+    public Severity VendorSeverity { get; } = Severity.Neutral;
+    public string VendorText { get; } = "";
+    public bool HasVendorText => VendorText.Length > 0;
+    public bool HasVendorPill => VendorPill.Length > 0;
+
+    /// <summary>The status next to the vendor pill: "186 d behind newest", so the two lags can't be confused.</summary>
+    public string PairedStatusText => HasVendorPill && Result.Status == DriverStatus.Behind ? $"{StatusText} newest" : StatusText;
+
+    /// <summary>The board's or card's listing this driver was compared with; null when there is none.</summary>
+    public VendorListing? Vendor { get; }
+
+    /// <summary>"MSI's latest: 8.03.25.247 (2026-09-18)": the vendor's listing, whether or not it compares.</summary>
+    public string VendorLatest { get; } = "";
+
+    /// <summary><see cref="VendorLatest"/>, plus this driver's build in the vendor's package when that's numbered differently.</summary>
+    public string VendorLine { get; } = "";
+    public bool HasVendorLine => VendorLine.Length > 0;
+
+    /// <summary>The vendor lists a newer build: the update it supports, listed first under "Needs attention".</summary>
+    public bool IsBehindVendor { get; }
+
     public bool HasUpdateSources => HasLinks || HasHint;
+
+    /// <summary>Date · source, without a dangling separator when either is missing (INF releases without a DriverVer date).</summary>
+    public string LineNewestDetail => string.Join(" · ", new[] { LineNewestDate, NewestSource }.Where(x => x.Length > 0));
+    public string FamilyNewestDetail => string.Join(" · ", new[] { FamilyNewestDate, FamilyNewestSources }.Where(x => x.Length > 0));
+
+    /// <summary>"Get the update" only when there is one; a current driver gets where its family comes from.</summary>
+    public string UpdateSourcesHeader => Result.Status == DriverStatus.Behind ? "Get the update" : "Where to get it";
     public bool HasParallelNote => ParallelNote.Length > 0;
     public bool HasLineVersions => LineVersions.Count > 0;
     public bool HasOtherFamilies => OtherFamilies.Length > 0;

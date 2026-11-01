@@ -27,11 +27,16 @@
                         <StackPanel Grid.Column="1">
                             <TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" />
                             <TextBlock Text="{x:Bind DriverText}" Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{x:Bind VendorLine}" Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis"
+                                       Visibility="{x:Bind HasVendorLine}" />
                             <TextBlock Text="{x:Bind SiliconText}" Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis"
                                        Visibility="{x:Bind HasSilicon}" />
                         </StackPanel>
-                        <views:StatusPill Grid.Column="2" VerticalAlignment="Top" Text="{x:Bind Pill}" Severity="{x:Bind Severity}"
-                                          Visibility="{x:Bind HasPill}" />
+                        <!-- Against the board's or card's vendor, then against the newest anywhere. -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top">
+                            <views:StatusPill Text="{x:Bind VendorPill}" Severity="{x:Bind VendorSeverity}" Visibility="{x:Bind HasVendorPill}" />
+                            <views:StatusPill Text="{x:Bind Pill}" Severity="{x:Bind Severity}" Visibility="{x:Bind HasPill}" />
+                        </StackPanel>
                     </Grid>
                 </Button>
                 <HyperlinkButton Grid.Column="1" VerticalAlignment="Top" Margin="0,4,0,0" Content="{x:Bind SiliconLinkText}"
@@ -220,8 +225,13 @@
                                             <StackPanel>
                                                 <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{x:Bind AttentionDetail}" Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{x:Bind VendorLine}" Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis"
+                                                           Visibility="{x:Bind HasVendorLine}" />
                                             </StackPanel>
-                                            <views:StatusPill Grid.Column="1" Text="{x:Bind AttentionPill}" Severity="{x:Bind AttentionSeverity}" />
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Top">
+                                                <views:StatusPill Text="{x:Bind VendorPill}" Severity="{x:Bind VendorSeverity}" Visibility="{x:Bind HasVendorPill}" />
+                                                <views:StatusPill Text="{x:Bind AttentionPill}" Severity="{x:Bind AttentionSeverity}" />
+                                            </StackPanel>
                                         </Grid>
                                     </Button>
                                 </DataTemplate>

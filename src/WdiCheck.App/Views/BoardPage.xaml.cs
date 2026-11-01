@@ -37,9 +37,4 @@ public sealed partial class BoardPage : Page
     }
 
     private async void Auto_Click(object sender, RoutedEventArgs e) => await ViewModel.SelectBoardAsync(null);
-
-    // A horizontally scrolling ScrollViewer measures its content with unlimited width, so star columns can't
-    // size themselves; pinning the table to the viewport width lets them fill the card, and MinWidth scrolls when narrow.
-    private void FamilyTableScroller_SizeChanged(object sender, SizeChangedEventArgs e) =>
-        FamilyTable.Width = Math.Max(FamilyTable.MinWidth, e.NewSize.Width);
 }

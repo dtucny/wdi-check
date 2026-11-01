@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="WdiCheck.App.Views.ListingTable"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:WdiCheck.App.ViewModels"
+    xmlns:views="using:WdiCheck.App.Views">
+
+    <!-- A vendor's listing read left to right: installed here (against the vendor), the vendor's version (against the
+         newest), the newest anywhere. Shared by the board and graphics card pages. -->
+    <Border Style="{StaticResource CardStyle}" Padding="0">
+        <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Auto"
+                      VerticalScrollMode="Disabled" SizeChanged="Scroller_SizeChanged">
+            <!-- Width follows the card (code-behind) so the columns fill it; below MinWidth it scrolls. -->
+            <StackPanel x:Name="Table" MinWidth="880">
+                <Grid Padding="20,10" ColumnSpacing="12" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="1.8*" />
+                        <ColumnDefinition Width="1.8*" />
+                        <ColumnDefinition Width="1.5*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="FAMILY" Style="{StaticResource ColumnHeaderStyle}" />
+                    <TextBlock Grid.Column="1" Text="INSTALLED HERE" Style="{StaticResource ColumnHeaderStyle}" />
+                    <TextBlock x:Name="VendorHeader" Grid.Column="2" Text="VENDOR LISTS" Style="{StaticResource ColumnHeaderStyle}" />
+                    <TextBlock Grid.Column="3" Text="NEWEST ANYWHERE" Style="{StaticResource ColumnHeaderStyle}" />
+                </Grid>
+                <ItemsRepeater x:Name="Rows">
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BoardFamilyItem">
+                            <Grid Padding="20,10" ColumnSpacing="12" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="1.8*" />
+                                    <ColumnDefinition Width="1.8*" />
+                                    <ColumnDefinition Width="1.5*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="{x:Bind Family}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{x:Bind Component}" Style="{StaticResource MutedTextStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                    <TextBlock Text="{x:Bind Installed}" Style="{StaticResource VersionTextStyle}" TextWrapping="Wrap" />
+                                    <views:StatusPill Text="{x:Bind StandingText}" Severity="{x:Bind StandingSeverity}" HorizontalAlignment="Left"
+                                                      Visibility="{x:Bind vm:Display.ShowText(StandingText)}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="4">
+                                    <StackPanel>
+                                        <TextBlock Text="{x:Bind Listed}" Style="{StaticResource VersionTextStyle}" />
+                                        <TextBlock Text="{x:Bind ListedDate}" Style="{StaticResource MutedTextStyle}" />
+                                        <TextBlock Text="{x:Bind SameLineNote}" Style="{StaticResource MutedTextStyle}"
+                                                   Visibility="{x:Bind vm:Display.ShowText(SameLineNote)}" />
+                                    </StackPanel>
+                                    <views:StatusPill Text="{x:Bind LagText}" Severity="{x:Bind LagSeverity}" HorizontalAlignment="Left"
+                                                      Visibility="{x:Bind vm:Display.ShowText(LagText)}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="3">
+                                    <TextBlock Text="{x:Bind Newest}" Style="{StaticResource VersionTextStyle}" />
+                                    <TextBlock Text="{x:Bind NewestDate}" Style="{StaticResource MutedTextStyle}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

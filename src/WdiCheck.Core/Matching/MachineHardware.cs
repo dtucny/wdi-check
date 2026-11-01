@@ -111,7 +111,7 @@ public static partial class MachineHardware
     private static int Order(string component) =>
         Array.IndexOf(ComponentOrder, component) is var i and >= 0 ? i : ComponentOrder.Length;
 
-    private static bool IsGpu(LocalDevice d) =>
+    internal static bool IsGpu(LocalDevice d) =>
         string.Equals(d.Class, "Display", StringComparison.OrdinalIgnoreCase)
         && d.HardwareIds.Any(id => id.StartsWith(@"PCI\", StringComparison.OrdinalIgnoreCase));
 

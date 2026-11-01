@@ -1,15 +1,51 @@
 using WdiCheck.Core.Api;
 using WdiCheck.Core.Matching;
 using WdiCheck.Core.Scanning;
+using WdiCheck.Core.Versions;
 using WdiCheck.Core.WindowsUpdate;
 
 namespace WdiCheck.App.ViewModels;
 
 public sealed record SummaryTile(string Count, string Label, Severity Severity, string Filter);
 
+/// <summary>
+/// One row of a vendor's listing, read left to right: what's installed (and how it stands against the vendor), what
+/// the vendor lists (and how far that trails), and the newest release anywhere.
+/// </summary>
 public sealed record BoardFamilyItem(
     string Family, string Component, string Listed, string ListedDate, string Newest, string NewestDate,
-    string Installed, string LagText, Severity LagSeverity, bool UpstreamOnly, string SameLineNote);
+    string Installed, string LagText, Severity LagSeverity, bool UpstreamOnly, string SameLineNote,
+    string StandingText = "", Severity StandingSeverity = Severity.Neutral)
+{
+    /// <summary>The row for a family; with several reports (a card's possible models), their listings combined.</summary>
+    public static BoardFamilyItem From(IReadOnlyList<BoardFamilyComparison> rows, string vendor)
+    {
+        var c = rows[0];
+        var listed = rows.Select(r => r.Row.ListedVersion).Where(v => v is not null).Distinct().ToList();
+        var lags = rows.Select(r => r.Row.LagDays).Distinct().ToList();
+        var standings = rows.Select(r => r.Vendor).DistinctBy(v => v.Standing).ToList();
+        var (standing, standingSeverity) = standings.Count == 1
+            ? Display.Standing(standings[0], vendor)
+            : ("Depends on model", Severity.Neutral);
+        var (lagText, lagSeverity) = lags.Count == 1 ? Display.ListingLag(lags[0]) : ("Depends on model", Severity.Neutral);
+        return new BoardFamilyItem(
+            c.Row.Family,
+            Display.Component(c.Row.Component) + (c.Row.UpstreamOnly ? " · newest ships upstream only" : ""),
+            listed.Count > 1
+                ? $"{listed.Min(DriverVersion.Parse)!.Raw} – {listed.Max(DriverVersion.Parse)!.Raw}"
+                : (c.Row.ListedVersion ?? "—") + (c.Row.ListedEquiv is { } eq ? $" (= {eq})" : ""),
+            listed.Count > 1 ? "depends on model" : c.Row.ListedDate ?? "",
+            c.Row.WaterVersion ?? "—",
+            c.Row.WaterFirstPublished ?? "",
+            c.InstalledSummary,
+            lagText,
+            lagSeverity,
+            c.Row.UpstreamOnly,
+            listed.Count == 1 && c.Row.SameLineNewest is { } sl && sl != c.Row.ListedVersion ? $"Newest on the listed line: {sl}" : "",
+            standing,
+            standingSeverity);
+    }
+}
 
 /// <summary>Everything the pages display, computed once per scan (or board change).</summary>
 public sealed partial class SnapshotView
@@ -20,7 +56,7 @@ public sealed partial class SnapshotView
         WindowsUpdate = windowsUpdate ?? WindowsUpdateInfo.Off;
         var boardVendor = s.SelectedBoard?.Vendor;
         Rows = s.Results
-            .Select(r => new DeviceRowViewModel(r, boardVendor, WindowsUpdate, s.Identity))
+            .Select(r => new DeviceRowViewModel(r, boardVendor, WindowsUpdate, s.Identity, VendorListingFor(s, r)))
             .OrderBy(r => r.SortKey)
             .ThenByDescending(r => r.Result.LagDays ?? 0)
             .ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
@@ -40,8 +76,9 @@ public sealed partial class SnapshotView
             new(Count(r => r.Status == DriverStatus.NotIndexed).ToString(), "Not in index", Severity.Neutral, Filters.NotIndexed),
         ];
 
-        // Behind first (sorted by lag), then devices Windows Update has an update for that the index doesn't flag.
-        Attention = Rows.Where(r => r.Result.Status == DriverStatus.Behind).Take(8)
+        // Behind first: updates the board's or card's vendor lists before those only available elsewhere, each by lag.
+        // Then devices Windows Update has an update for that the index doesn't flag.
+        Attention = Rows.Where(r => r.Result.Status == DriverStatus.Behind).OrderByDescending(r => r.IsBehindVendor).Take(8)
             .Concat(Rows.Where(r => r.HasWindowsUpdateUpdate && r.Result.Status != DriverStatus.Behind))
             .ToList();
         WindowsUpdateUpdates = WindowsUpdate.Offers.Where(o => !o.MatchesInstalledBios(s.Identity)).ToList();
@@ -130,19 +167,16 @@ public sealed partial class SnapshotView
                 <= 365 => ($"{Display.Vendor(b.Report.Board.Vendor)}'s listing is reasonably maintained — worst family is {worst} days behind.", Severity.Warning),
                 _ => ($"{b.Report.Families.Count(x => x.LagDays > 365)} of {b.Report.Families.Count} driver families on {Display.Vendor(b.Report.Board.Vendor)}'s listing are more than a year behind — worst is {Display.Lag(worst)}.", Severity.Critical),
             };
-            BoardFamilies = b.Families.Select(c => new BoardFamilyItem(
-                c.Row.Family,
-                Display.Component(c.Row.Component) + (c.Row.UpstreamOnly ? " · newest ships upstream only" : ""),
-                (c.Row.ListedVersion ?? "—") + (c.Row.ListedEquiv is { } eq ? $" (= {eq})" : ""),
-                c.Row.ListedDate ?? "",
-                c.Row.WaterVersion ?? "—",
-                c.Row.WaterFirstPublished ?? "",
-                c.InstalledSummary,
-                c.Row.LagDays is null ? "n/a" : Display.Lag(c.Row.LagDays),
-                c.Row.LagDays is null ? Severity.Neutral : Display.LagSeverity(c.Row.LagDays),
-                c.Row.UpstreamOnly,
-                c.Row.SameLineNewest is { } sl && sl != c.Row.ListedVersion ? $"Newest on the listed line: {sl}" : "")).ToList();
+            BoardVendor = Display.Vendor(b.Report.Board.Vendor);
+            BoardFamilies = b.Families.Select(c => BoardFamilyItem.From([c], BoardVendor)).ToList();
         }
+        BoardPageTitle = s.SelectedBoard?.ProductType?.ToLowerInvariant() switch
+        {
+            "laptop" => "Laptop",
+            "desktop" => "Desktop",
+            _ => "Motherboard",
+        };
+        Cards = s.Cards.Select(c => new CardView(c)).ToList();
 
         Candidates = s.BoardCandidates;
         ShowCandidates = s.SelectedBoard is null && s.BoardCandidates.Count > 0;
@@ -151,7 +185,9 @@ public sealed partial class SnapshotView
         var rowFor = Rows.ToDictionary(r => r.Result);
         var machine = MachineHardware.Build(s.Identity, s.Results, s.Infs);
         var hardware = machine
-            .Select(h => (h.IsCore, Row: new HardwareRowViewModel(h, h.Driver is { } d ? rowFor.GetValueOrDefault(d) : null)))
+            .Select(h => (h.IsCore, Row: new HardwareRowViewModel(h, h.Driver is { } d ? rowFor.GetValueOrDefault(d) : null,
+                h.Devices.Select(rowFor.GetValueOrDefault).OfType<DeviceRowViewModel>().ToList(),
+                s.Cards.FirstOrDefault(c => h.Component == "graphics" && h.Devices.Contains(c.Card.Gpu))?.Card.Key)))
             .ToList();
         CoreHardware = hardware.Where(h => h.IsCore).Select(h => h.Row).ToList();
         MoreHardware = hardware.Where(h => !h.IsCore).Select(h => h.Row).ToList();
@@ -162,6 +198,26 @@ public sealed partial class SnapshotView
             .Where(h => h.Component == "graphics" && h.Detail != "built-in")
             .Select(h => h.Name);
         MachineText = string.Join(" · ", new[] { IdentityText, cpu }.Concat(cards).Where(x => !string.IsNullOrWhiteSpace(x)));
+    }
+
+    /// <summary>
+    /// A card's GPU against the card maker's listing (when its possible models agree), everything else against the
+    /// board's.
+    /// </summary>
+    private static VendorListing? VendorListingFor(ScanSnapshot s, DeviceResult r)
+    {
+        if (s.Cards.FirstOrDefault(c => c.Card.Gpu == r) is { } card)
+        {
+            var all = card.Shown.Select(a => a.ForDevice(r)).OfType<VendorComparison>().ToList();
+            if (all.Count == 0 || all.DistinctBy(c => c.Standing).Count() > 1 || card.Shown.FirstOrDefault() is not { } shown)
+                return null;
+            // Models that list different versions have no single "latest" to show.
+            var comparison = all.DistinctBy(c => c.Listed).Count() == 1 ? all[0] : all[0] with { Listed = null, ListedDate = null };
+            return new VendorListing(comparison, Display.Vendor(shown.Report.Board.Vendor), "card");
+        }
+        return s.Board?.ForDevice(r) is { } b
+            ? new VendorListing(b, Display.Vendor(s.Board.Report.Board.Vendor), s.SelectedBoard?.ProductType?.ToLowerInvariant() is "laptop" or "desktop" ? s.SelectedBoard.ProductType.ToLowerInvariant() : "board")
+            : null;
     }
 
     /// <summary>"…8-Core Processor" on AMD brand strings, which the header can do without.</summary>
@@ -275,6 +331,15 @@ public sealed partial class SnapshotView
     public string VendorVerdict { get; } = "";
     public Severity VendorVerdictSeverity { get; } = Severity.Neutral;
     public IReadOnlyList<BoardFamilyItem> BoardFamilies { get; } = [];
+
+    /// <summary>"MSI": the board vendor as the listing's column header names it.</summary>
+    public string BoardVendor { get; } = "Vendor";
+
+    /// <summary>"Motherboard", "Laptop" or "Desktop": the board page's title and navigation entry.</summary>
+    public string BoardPageTitle { get; }
+
+    /// <summary>Add-in graphics cards, one page each.</summary>
+    public IReadOnlyList<CardView> Cards { get; }
     public IReadOnlyList<BoardCandidate> Candidates { get; }
     public bool ShowCandidates { get; }
     public bool IsBoardOverride => Snapshot.BoardIsOverride;

@@ -11,7 +11,7 @@
     <ScrollViewer>
         <StackPanel MaxWidth="1100" Padding="32,20,32,40" Spacing="16">
             <StackPanel>
-                <TextBlock Text="This PC's board" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock Text="{x:Bind ViewModel.View.BoardPageTitle, Mode=OneWay, FallbackValue=Motherboard}" Style="{StaticResource TitleTextBlockStyle}" />
                 <TextBlock Text="{x:Bind ViewModel.View.IdentityText, Mode=OneWay}" Style="{StaticResource MutedTextStyle}" IsTextSelectionEnabled="True" />
             </StackPanel>
 
@@ -130,60 +130,8 @@
                 <StackPanel Spacing="8">
                     <TextBlock Text="The vendor's driver listing for this model" Style="{StaticResource SectionHeaderStyle}" />
                     <TextBlock Style="{StaticResource MutedTextStyle}"
-                               Text="What the vendor's support page offers per driver family, the newest release anywhere, and what is installed on this PC. The lag is how far the vendor's listing trails the newest release." />
-                    <Border Style="{StaticResource CardStyle}" Padding="0">
-                        <ScrollViewer x:Name="FamilyTableScroller" HorizontalScrollBarVisibility="Auto" HorizontalScrollMode="Auto"
-                                      VerticalScrollMode="Disabled" SizeChanged="FamilyTableScroller_SizeChanged">
-                            <!-- Width follows the card (code-behind) so the columns fill it; below MinWidth it scrolls. -->
-                            <StackPanel x:Name="FamilyTable" MinWidth="880">
-                                <Grid Padding="20,10" ColumnSpacing="12" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*" />
-                                        <ColumnDefinition Width="1.6*" />
-                                        <ColumnDefinition Width="1.5*" />
-                                        <ColumnDefinition Width="1.9*" />
-                                        <ColumnDefinition Width="140" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="FAMILY" Style="{StaticResource ColumnHeaderStyle}" />
-                                    <TextBlock Grid.Column="1" Text="VENDOR LISTS" Style="{StaticResource ColumnHeaderStyle}" />
-                                    <TextBlock Grid.Column="2" Text="NEWEST ANYWHERE" Style="{StaticResource ColumnHeaderStyle}" />
-                                    <TextBlock Grid.Column="3" Text="INSTALLED HERE" Style="{StaticResource ColumnHeaderStyle}" />
-                                    <TextBlock Grid.Column="4" Text="VENDOR LAG" Style="{StaticResource ColumnHeaderStyle}" />
-                                </Grid>
-                                <ItemsRepeater ItemsSource="{x:Bind ViewModel.View.BoardFamilies, Mode=OneWay}">
-                                    <ItemsRepeater.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:BoardFamilyItem">
-                                            <Grid Padding="20,10" ColumnSpacing="12" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="2*" />
-                                                    <ColumnDefinition Width="1.6*" />
-                                                    <ColumnDefinition Width="1.5*" />
-                                                    <ColumnDefinition Width="1.9*" />
-                                                    <ColumnDefinition Width="140" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel>
-                                                    <TextBlock Text="{x:Bind Family}" TextWrapping="Wrap" />
-                                                    <TextBlock Text="{x:Bind Component}" Style="{StaticResource MutedTextStyle}" />
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock Text="{x:Bind Listed}" Style="{StaticResource VersionTextStyle}" />
-                                                    <TextBlock Text="{x:Bind ListedDate}" Style="{StaticResource MutedTextStyle}" />
-                                                    <TextBlock Text="{x:Bind SameLineNote}" Style="{StaticResource MutedTextStyle}"
-                                                               Visibility="{x:Bind vm:Display.ShowText(SameLineNote)}" />
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="{x:Bind Newest}" Style="{StaticResource VersionTextStyle}" />
-                                                    <TextBlock Text="{x:Bind NewestDate}" Style="{StaticResource MutedTextStyle}" />
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="3" Text="{x:Bind Installed}" Style="{StaticResource VersionTextStyle}" TextWrapping="Wrap" />
-                                                <views:StatusPill Grid.Column="4" VerticalAlignment="Top" Text="{x:Bind LagText}" Severity="{x:Bind LagSeverity}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsRepeater.ItemTemplate>
-                                </ItemsRepeater>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </Border>
+                               Text="Read each row left to right: the driver installed here, against what the vendor's support page offers; then the vendor's version, against the newest release anywhere. Behind the vendor is an update the vendor supports; a listing behind the newest means the newer build comes from the chip vendor or another manufacturer." />
+                    <views:ListingTable ItemsSource="{x:Bind ViewModel.View.BoardFamilies, Mode=OneWay}" Vendor="{x:Bind ViewModel.View.BoardVendor, Mode=OneWay}" />
                 </StackPanel>
             </StackPanel>
         </StackPanel>

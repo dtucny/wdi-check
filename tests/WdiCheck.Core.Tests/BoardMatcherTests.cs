@@ -155,7 +155,7 @@ public class BoardAssessmentTests
         Assert.Equal(73, a.BiosLagDays);
         Assert.Equal(233, a.WorstListingLag);
         Assert.Equal("10.79.50.1003", a.Families.Single(f => f.Row.Family == "Realtek 8125 LAN").InstalledSummary);
-        Assert.Equal("—", a.Families.Single(f => f.Row.Family == "AMD RAID").InstalledSummary);
+        Assert.Equal("No device found", a.Families.Single(f => f.Row.Family == "AMD RAID").InstalledSummary);
     }
 
     [Theory]

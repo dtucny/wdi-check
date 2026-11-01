@@ -103,6 +103,23 @@ public static class Display
         _ => ("Not in index", Severity.Neutral),
     };
 
+    /// <summary>The installed driver against the vendor's latest: "Current with MSI", "Ahead of MSI", "234 d behind MSI".</summary>
+    public static (string Text, Severity Severity) Standing(VendorComparison c, string vendor) => c.Standing switch
+    {
+        VendorStanding.Same => ($"Current with {vendor}", Severity.Good),
+        VendorStanding.Newer => ($"Ahead of {vendor}", Severity.Good),
+        VendorStanding.Behind => c.LagDays is { } d ? ($"{Lag(d)} {vendor}", LagSeverity(d)) : ($"Behind {vendor}", Severity.Warning),
+        _ => ("", Severity.Neutral),
+    };
+
+    /// <summary>A vendor listing against the newest release anywhere: "Newest", "299 d behind newest".</summary>
+    public static (string Text, Severity Severity) ListingLag(int? days) => days switch
+    {
+        null => ("", Severity.Neutral),
+        0 => ("Newest", Severity.Good),
+        _ => ($"{Lag(days)} newest", LagSeverity(days)),
+    };
+
     // x:Bind helpers
     public static FontWeight Weight(bool bold) => bold ? FontWeights.SemiBold : FontWeights.Normal;
 
