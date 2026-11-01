@@ -16,6 +16,12 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
   releases include `LICENSE` and `NOTICE`. `CONTRIBUTING.md` explains how to report problems and
   the terms contributions are accepted under.
 
+### Dependencies
+- .NET SDK 10.0.100 → 10.0.403, so the app bundles the .NET 10.0.14 runtime.
+- Windows App SDK 2.3.9 → 2.6.4 (`Microsoft.WindowsAppSDK.WinUI`). It now brings a matching
+  `Microsoft.WindowsAppSDK.InteractiveExperiences` itself, so the separate pin to 2.1.9 is gone.
+- Tests run on xUnit v3 4.0 through Microsoft.Testing.Platform (`dotnet test --project …`).
+
 ### Removed
 - `doc/upstream-requests.md`. Open requests to WinDriverIndex are now
   [issues on its repository](https://github.com/dtucny/WinDriverIndex/issues) (#9–#11).

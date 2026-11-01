@@ -43,7 +43,8 @@ $name = "WdiCheck-$version-$rid"
 Write-Host "Building WdiCheck $version ($rid)"
 
 if (-not $SkipTests) {
-    Invoke-Dotnet test (Join-Path $root 'tests\WdiCheck.Core.Tests\WdiCheck.Core.Tests.csproj') -c $Configuration --nologo
+    # xUnit v3 runs on Microsoft.Testing.Platform (opted in by global.json), which takes the project via --project.
+    Invoke-Dotnet test --project (Join-Path $root 'tests\WdiCheck.Core.Tests\WdiCheck.Core.Tests.csproj') -c $Configuration
 }
 
 if ($Unpackaged) {

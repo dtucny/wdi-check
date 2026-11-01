@@ -113,8 +113,8 @@ Requirements: Windows 10 1809+ (Windows 11 recommended) and the .NET 10 SDK
 (`winget install Microsoft.DotNet.SDK.10`). Visual Studio is not required.
 
 ```powershell
-dotnet test tests/WdiCheck.Core.Tests          # unit tests
-dotnet build WdiCheck.slnx                     # x64 debug build
+dotnet test --project tests/WdiCheck.Core.Tests  # unit tests
+dotnet build WdiCheck.slnx                       # x64 debug build
 src\WdiCheck.App\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\WdiCheck.exe
 
 ./scripts/build.ps1                            # tests + unpackaged zip + unsigned MSIX → artifacts/
