@@ -16,6 +16,10 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
   releases include `LICENSE` and `NOTICE`. `CONTRIBUTING.md` explains how to report problems and
   the terms contributions are accepted under.
 
+### Removed
+- `doc/upstream-requests.md`. Open requests to WinDriverIndex are now
+  [issues on its repository](https://github.com/dtucny/WinDriverIndex/issues) (#9–#11).
+
 ## [0.2.7] - 2026-11-01
 
 ### Added

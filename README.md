@@ -104,6 +104,9 @@ index costs one small request, and the app still works offline from the last cop
 Index data is © WinDriverIndex contributors, licensed [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/).
 "Newest" means the newest version any source has published, not a judgement that it is good.
 
+Gaps in the data that WdiCheck works around are tracked as
+[WinDriverIndex issues](https://github.com/dtucny/WinDriverIndex/issues).
+
 ## Building
 
 Requirements: Windows 10 1809+ (Windows 11 recommended) and the .NET 10 SDK
@@ -175,7 +178,6 @@ src/WdiCheck.App/          WinUI 3 app (MVVM, CommunityToolkit.Mvvm)
 tests/WdiCheck.Core.Tests/ xUnit tests (fixtures built from real index rows)
 scripts/                   build, release notes, dev certificate, asset generation
 .github/workflows/         release build on version tags
-doc/upstream-requests.md   problems found in WinDriverIndex and suggested API changes
 CHANGELOG.md               release notes
 ```
 
