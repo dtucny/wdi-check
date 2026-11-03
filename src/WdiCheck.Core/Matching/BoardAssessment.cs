@@ -1,5 +1,6 @@
 using System.Globalization;
 using WdiCheck.Core.Api;
+using WdiCheck.Core.Index;
 using WdiCheck.Core.Inventory;
 using WdiCheck.Core.Versions;
 
@@ -111,12 +112,27 @@ public sealed record BoardFamilyComparison(BoardFamilyRow Row, IReadOnlyList<Dev
     public bool UsesWindowsDriver { get; init; }
 
     /// <summary>
-    /// The installed versions; otherwise why there are none: Windows' driver, or no device of the family at all (a
-    /// disabled Wi-Fi card, a utility rather than a driver).
+    /// The index lists no hardware IDs for the family (Lenovo's "Notebook WLAN (multi-silicon)"), so whether this PC
+    /// has its hardware can't be told.
+    /// </summary>
+    public bool HasNoHardwareIds { get; init; }
+
+    /// <summary>
+    /// With no device of this family, the listed family of the same kind this PC has instead: one listing covers
+    /// every configuration of a model, so Lenovo lists Realtek Wi-Fi beside the MediaTek card this unit has.
+    /// </summary>
+    public string? FittedInstead { get; init; }
+
+    /// <summary>
+    /// The installed versions; otherwise why there are none: Windows' driver, a family with nothing to match devices
+    /// by, or no device of the family at all (a disabled Wi-Fi card, a part fitted only to other units).
     /// </summary>
     public string InstalledSummary => Installed.Count > 0
         ? string.Join(", ", Installed.Select(r => r.Device.DriverVersion).Where(v => v is not null).Distinct())
-        : UsesWindowsDriver ? "Windows driver" : "No device found";
+        : UsesWindowsDriver ? "Windows driver"
+        : HasNoHardwareIds ? "Can't tell: no hardware IDs"
+        : FittedInstead is { } other ? $"Not fitted: this PC has {other}"
+        : "No device found";
 
     /// <summary>Each installed device against the vendor's listing.</summary>
     public IReadOnlyDictionary<DeviceResult, VendorComparison> ByDevice { get; init; } = new Dictionary<DeviceResult, VendorComparison>();
@@ -203,7 +219,9 @@ public sealed class BoardAssessment
         Families.Select(f => f.ByDevice.GetValueOrDefault(r)).FirstOrDefault(c => c is not null);
 
     /// <param name="assessBios">False for a graphics card: the BIOS SMBIOS reports is the board's, not the card's.</param>
-    public static BoardAssessment Create(BoardReport report, SystemIdentity identity, IReadOnlyList<DeviceResult> devices, bool assessBios = true)
+    /// <param name="index">The index the devices were matched with, to tell families it can't match devices to.</param>
+    public static BoardAssessment Create(BoardReport report, SystemIdentity identity, IReadOnlyList<DeviceResult> devices, bool assessBios = true,
+        DriverIndex? index = null)
     {
         // The versioned BIOS's own publish date when the index gives one, else the newest BIOS date.
         var dateText = !string.IsNullOrEmpty(report.Bios?.LastBiosVersionDate) ? report.Bios.LastBiosVersionDate : report.Bios?.LastBios;
@@ -221,6 +239,12 @@ public sealed class BoardAssessment
             .Select(r => r.Family!.Name)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // The listed families this PC has a device of, by component (wlan, bluetooth), for "not fitted: this PC has …".
+        var fittedByComponent = report.Families
+            .Where(f => !string.IsNullOrEmpty(f.Component) && byFamily.ContainsKey(f.Family))
+            .GroupBy(f => f.Component!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Family, StringComparer.OrdinalIgnoreCase);
+
         return new BoardAssessment
         {
             Report = report,
@@ -236,6 +260,8 @@ public sealed class BoardAssessment
                     {
                         ByDevice = installed.ToDictionary(r => r, r => VendorComparison.Of(r, f, report.Board.Vendor)),
                         UsesWindowsDriver = onWindowsDriver.Contains(f.Family),
+                        HasNoHardwareIds = index is not null && index.ByName(f.Family)?.Family.Hwids is not { Count: > 0 },
+                        FittedInstead = installed.Count == 0 && f.Component is { Length: > 0 } c ? fittedByComponent.GetValueOrDefault(c) : null,
                     };
                 })
                 .ToList(),

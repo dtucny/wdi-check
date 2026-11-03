@@ -158,6 +158,45 @@ public class BoardAssessmentTests
         Assert.Equal("No device found", a.Families.Single(f => f.Row.Family == "AMD RAID").InstalledSummary);
     }
 
+    [Fact]
+    public void ListedPartOfAnotherConfigurationNamesTheOneFitted()
+    {
+        // Legion Slim 5: one listing for every 82Y9, so Lenovo lists Realtek Wi-Fi beside this unit's MediaTek card.
+        var report = new BoardReport
+        {
+            Board = new Board { BoardId = 2196, Vendor = "lenovo", Name = "Legion Slim 5 16aph8 (82Y9)" },
+            Families =
+            [
+                new BoardFamilyRow { Family = "Realtek 8125 LAN", Component = "lan" },
+                new BoardFamilyRow { Family = "Realtek 8126 LAN", Component = "lan" },
+                new BoardFamilyRow { Family = "AMD RAID", Component = "storage" },
+            ],
+        };
+        var results = new[] { new DeviceMatcher(Fixtures.Index()).Match(Fixtures.Rtl8125()) };
+
+        var a = BoardAssessment.Create(report, new SystemIdentity(), results, index: Fixtures.Index());
+
+        Assert.Equal("Not fitted: this PC has Realtek 8125 LAN", a.Families.Single(f => f.Row.Family == "Realtek 8126 LAN").InstalledSummary);
+        Assert.Equal("No device found", a.Families.Single(f => f.Row.Family == "AMD RAID").InstalledSummary);
+    }
+
+    [Fact]
+    public void FamilyWithoutHardwareIdsCantBeTold()
+    {
+        // Legion Slim 5: Lenovo's "Notebook WLAN (multi-silicon)" has no hardware IDs, so its devices can't be found.
+        var report = new BoardReport
+        {
+            Board = new Board { BoardId = 2196, Vendor = "lenovo", Name = "Legion Slim 5 16aph8 (82Y9)" },
+            Families = [new BoardFamilyRow { Family = "Notebook WLAN (multi-silicon)" }, new BoardFamilyRow { Family = "AMD RAID" }],
+        };
+        var results = new[] { new DeviceMatcher(Fixtures.Index()).Match(Fixtures.Rtl8125()) };
+
+        var a = BoardAssessment.Create(report, new SystemIdentity(), results, index: Fixtures.Index());
+
+        Assert.Equal("Can't tell: no hardware IDs", a.Families.Single(f => f.Row.Family == "Notebook WLAN (multi-silicon)").InstalledSummary);
+        Assert.Equal("No device found", a.Families.Single(f => f.Row.Family == "AMD RAID").InstalledSummary);
+    }
+
     [Theory]
     // Legion Slim 5: M3CN50WW built 2026-04-23, published by Lenovo 2026-08-07 — Vantage confirms it is the newest.
     [InlineData("2026-08-07", null, "M3CN50WW", "2026-04-23", BiosStatus.Unconfirmed)]

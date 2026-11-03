@@ -123,8 +123,13 @@ public sealed class InfIndex
         {
             // Same INF name under another numbering scheme (MediaTek's vendor 3.x vs Windows Update's
             // year-based 25.x for mtkwl6ex.inf) can't be ordered against the installed version; leave it out.
+            // The name already ties the release to this driver, so class-level IDs count here: AMD's amdafd.inf
+            // binds only PCI\VEN_1002&CC_0403. An Extension INF of the same name isn't the device's driver.
+            var allIds = new HashSet<string>(device.HardwareIds.Concat(device.CompatibleIds).Select(Hwid.Normalise)
+                .SelectMany(h => new[] { h, Hwid.Strip(h) }), StringComparer.Ordinal);
             var named = ByName(name)
-                .Where(r => (r.Hwids.Count == 0 || r.Hwids.Overlaps(idSet)) && r.Version.Line is { } l && l.IsSameScheme(line))
+                .Where(r => (r.Hwids.Count == 0 || r.Hwids.Overlaps(allIds)) && r.Version.Line is { } l && l.IsSameScheme(line)
+                            && ClassMatches(r.Row.Class, device.Class))
                 .ToList();
             pool.AddRange(named);
             byName = named.Count > 0;

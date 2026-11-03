@@ -9,6 +9,19 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+### Fixed
+- **"Installed here" says why there's no device** on the board page, instead of "No device found" for
+  all of them:
+  - "Not fitted: this PC has MediaTek Wi-Fi 6E" when the listing covers other configurations of the
+    model (Lenovo lists Realtek Wi-Fi beside the MediaTek card some units have) and this PC has
+    another listed family of the same kind.
+  - "Can't tell: no hardware IDs" for a family the index has nothing to match devices by (Lenovo's
+    "Notebook WLAN (multi-silicon)", "Notebook Chipset (AMD)").
+- **Drivers that bind only a class ID are matched to their INF.** AMD's HD Audio bus driver
+  (`amdafd.inf`) binds only `PCI\VEN_1002&CC_0403`, which the app ignores for matching, so it showed
+  as not indexed although the index lists its releases. When the installed INF's own name matches,
+  class IDs now count, and a same-named Extension INF isn't taken as the device's driver.
+
 ## [0.4.0] - 2026-11-01
 
 ### Added
