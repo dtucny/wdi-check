@@ -14,6 +14,8 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
     <DefaultLanguage>en-US</DefaultLanguage>
+    <!-- GpuResetWatcher calls Direct3D through its COM vtable. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <!-- Release publishes are trimmed: 231 MB → ~82 MB unpacked. The app is trim-safe (source-generated JSON,

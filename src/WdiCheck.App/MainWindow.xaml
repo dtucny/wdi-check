@@ -12,6 +12,7 @@
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -24,9 +25,25 @@
             </StackPanel>
         </Grid>
 
+        <!-- Declared up front, not created on the reset: text laid out after a reset may not draw. -->
+        <InfoBar
+            x:Name="GpuResetBar"
+            Grid.Row="1"
+            Margin="16,0,16,8"
+            Severity="Warning"
+            IsOpen="False"
+            Visibility="Collapsed"
+            Closed="GpuResetBar_Closed"
+            Title="The graphics driver was reset"
+            Message="After a driver update, parts of this window may not redraw. Restart WdiCheck to draw it again; your settings are kept.">
+            <InfoBar.ActionButton>
+                <Button Content="Restart WdiCheck" Click="RestartButton_Click" />
+            </InfoBar.ActionButton>
+        </InfoBar>
+
         <NavigationView
             x:Name="Nav"
-            Grid.Row="1"
+            Grid.Row="2"
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="True"
             PaneDisplayMode="Auto"
