@@ -48,7 +48,10 @@
             IsSettingsVisible="True"
             PaneDisplayMode="Auto"
             OpenPaneLength="220"
-            SelectionChanged="Nav_SelectionChanged">
+            SelectionChanged="Nav_SelectionChanged"
+            PaneOpened="Nav_PaneChanged"
+            PaneClosed="Nav_PaneChanged"
+            DisplayModeChanged="Nav_PaneChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Overview" Tag="overview">
                     <NavigationViewItem.Icon>
@@ -67,6 +70,62 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
+            <!-- Shown when a newer WdiCheck is out (code-behind): a card with the pane open, an icon when it's compact. -->
+            <NavigationView.PaneFooter>
+                <Grid x:Name="UpdatePanel" Visibility="Collapsed">
+                    <Border x:Name="UpdateCard" Margin="8,4,8,4" Padding="12,10,4,8" CornerRadius="{StaticResource OverlayCornerRadius}"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderThickness="1"
+                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}">
+                        <Grid ColumnSpacing="8" RowSpacing="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <FontIcon Glyph="&#xE896;" FontSize="16" VerticalAlignment="Center" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                            <TextBlock Text="Update available" Grid.Column="1" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap"
+                                       VerticalAlignment="Center" />
+                            <Button Grid.Column="2" Width="28" Height="28" Padding="0" VerticalAlignment="Top" Margin="0,-4,0,0"
+                                    Background="Transparent" BorderThickness="0" Click="UpdateDismiss_Click"
+                                    ToolTipService.ToolTip="Don't show for this version" AutomationProperties.Name="Don't show for this version">
+                                <FontIcon Glyph="&#xE711;" FontSize="12" />
+                            </Button>
+                            <TextBlock x:Name="UpdateSubtitle" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource MutedTextStyle}" />
+                            <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="2" Margin="0,8,0,0">
+                                <Button x:Name="UpdateDownloadButton" Style="{StaticResource AccentButtonStyle}" Padding="10,4" Click="UpdateDownload_Click">
+                                    <TextBlock x:Name="UpdateDownloadText" Text="Download" />
+                                </Button>
+                                <HyperlinkButton x:Name="UpdateNotesLink" Content="What's new" Padding="8,4" Click="UpdateNotes_Click" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Button x:Name="UpdateIconButton" Visibility="Collapsed" Width="40" Height="36" Margin="4,4,0,4" Padding="0"
+                            Style="{StaticResource AccentButtonStyle}" AutomationProperties.Name="A new version of WdiCheck is available">
+                        <FontIcon Glyph="&#xE896;" FontSize="16" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="RightEdgeAlignedBottom">
+                                <MenuFlyoutItem x:Name="UpdateDownloadItem" Text="Download" Click="UpdateDownload_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE896;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem x:Name="UpdateNotesItem" Text="What's new" Click="UpdateNotes_Click">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8A7;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Text="Don't show for this version" Click="UpdateDismiss_Click" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+            </NavigationView.PaneFooter>
             <Frame x:Name="ContentFrame" />
         </NavigationView>
     </Grid>

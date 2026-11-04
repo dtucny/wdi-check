@@ -31,6 +31,20 @@
 
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Spacing="8">
+                    <TextBlock Text="WdiCheck updates" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock Style="{StaticResource MutedTextStyle}"
+                               Text="Once a day, ask GitHub whether a newer WdiCheck has been released, and say so in the menu, above Settings. It downloads and installs nothing by itself." />
+                    <ToggleSwitch x:Name="UpdatesToggle" OnContent="Check for new versions" OffContent="Don't check for new versions"
+                                  Toggled="UpdatesToggle_Toggled" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button x:Name="CheckNowButton" Content="Check now" Click="CheckNow_Click" />
+                        <TextBlock x:Name="CheckNowText" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Spacing="8">
                     <TextBlock Text="Data source" Style="{StaticResource BodyStrongTextBlockStyle}" />
                     <TextBlock Style="{StaticResource MutedTextStyle}"
                                Text="WinDriverIndex publishes static JSON; any mirror of the /v1/latest/ tree works." />
