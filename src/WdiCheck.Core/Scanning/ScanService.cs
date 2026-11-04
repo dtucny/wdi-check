@@ -231,7 +231,7 @@ public sealed class ScanService(WdiClient client, IDeviceInventory inventory, Fu
             {
                 SelectedBoard = board,
                 BoardIsOverride = isOverride,
-                Board = BoardAssessment.Create(report, snapshot.Identity, snapshot.Results),
+                Board = BoardAssessment.Create(report, snapshot.Identity, snapshot.Results, index: snapshot.Index),
                 BoardError = null,
             };
         }

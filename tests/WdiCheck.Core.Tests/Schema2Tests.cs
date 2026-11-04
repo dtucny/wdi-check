@@ -152,6 +152,28 @@ public class InfMatchingTests
     }
 
     [Fact]
+    public void InfBindingOnlyAClassIdMatchesByName()
+    {
+        // Legion Slim 5: AMD's HD Audio bus driver amdafd.inf binds only PCI\VEN_1002&CC_0403 and was "not indexed".
+        // The same name's 26.20 row is an Extension INF, not this device's driver.
+        var rows = Rows
+            .Append(Inf("amdafd.inf", "25.30.0.0001", [25, 30, 0, 1], "2025-08-21", "System", [3], [@"PCI\VEN_1002&CC_0403", @"PCI\VEN_1002&CC_040300"]))
+            .Append(Inf("amdafd.inf", "26.20.0.0001", [26, 20, 0, 1], "2026-04-14", "Extension", [3], [@"PCI\VEN_1002&CC_0403", @"PCI\VEN_1002&CC_040300"]));
+        var matcher = new DeviceMatcher(Fixtures.Index(), InfIndex.Build(rows, Fixtures.Artefacts));
+        var bus = Fixtures.Device("High Definition Audio Bus", "25.30.0.1", "AMD", "oem123.inf",
+            [@"PCI\VEN_1002&DEV_1640&SUBSYS_382F17AA&REV_00", @"PCI\VEN_1002&DEV_1640&SUBSYS_382F17AA"],
+            [@"PCI\VEN_1002&DEV_1640&REV_00", @"PCI\VEN_1002&DEV_1640", @"PCI\VEN_1002&CC_040300", @"PCI\VEN_1002&CC_0403", @"PCI\CC_0403"],
+            original: "amdafd.inf") with { Class = "System" };
+
+        var r = matcher.Match(bus);
+
+        Assert.Equal(DriverStatus.Current, r.Status);
+        Assert.Equal(MatchConfidence.InfExact, r.Confidence);
+        Assert.Equal("25.30.0.0001", r.Inf?.Newest.Row.DriverVer);
+        Assert.Equal("AMD Graphics", r.Family?.Name);
+    }
+
+    [Fact]
     public void SiblingInfsOnOtherLinesAreNotMixed()
     {
         // realtekapo2 (11.x) and realtekuapo2 (13.x) bind the same SWC ID; the installed INF decides.
