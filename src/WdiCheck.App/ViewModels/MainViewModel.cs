@@ -76,8 +76,22 @@ public sealed partial class MainViewModel : ObservableObject
 
     public Task LoadAsync() => ScanAsync(revalidate: false);
 
+    /// <summary>
+    /// Set after a graphics driver reset: the window can't draw new text any more, so "Check again" restarts the
+    /// app (which scans on start) instead of scanning into it.
+    /// </summary>
+    public Action? RestartInsteadOfRefresh { get; set; }
+
     [RelayCommand(CanExecute = nameof(CanRefresh))]
-    private Task RefreshAsync() => ScanAsync(revalidate: true);
+    private Task RefreshAsync()
+    {
+        if (RestartInsteadOfRefresh is { } restart)
+        {
+            restart();
+            return Task.CompletedTask;
+        }
+        return ScanAsync(revalidate: true);
+    }
 
     private bool CanRefresh() => !IsBusy;
 

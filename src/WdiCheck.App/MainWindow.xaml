@@ -35,7 +35,7 @@
             Visibility="Collapsed"
             Closed="GpuResetBar_Closed"
             Title="The graphics driver was reset"
-            Message="After a driver update, parts of this window may not redraw. Restart WdiCheck to draw it again; your settings are kept.">
+            Message="Parts of this window may not redraw after that, so Check again now restarts WdiCheck. Your settings are kept.">
             <InfoBar.ActionButton>
                 <Button Content="Restart WdiCheck" Click="RestartButton_Click" />
             </InfoBar.ActionButton>

@@ -47,6 +47,8 @@ public sealed partial class MainWindow : Window
     {
         GpuResetBar.Visibility = Visibility.Visible;
         GpuResetBar.IsOpen = true;
+        // Text laid out after the reset can come out blank (a rescan left every value missing), so don't rescan here.
+        App.ViewModel.RestartInsteadOfRefresh = Restart;
         _ = RewatchAsync();
     }
 
@@ -59,7 +61,9 @@ public sealed partial class MainWindow : Window
 
     private void GpuResetBar_Closed(InfoBar sender, InfoBarClosedEventArgs args) => sender.Visibility = Visibility.Collapsed;
 
-    private void RestartButton_Click(object sender, RoutedEventArgs e)
+    private void RestartButton_Click(object sender, RoutedEventArgs e) => Restart();
+
+    private static void Restart()
     {
         // Packaged or not, AppInstance restarts the same way; it returns only when the restart failed.
         var reason = Microsoft.Windows.AppLifecycle.AppInstance.Restart("");
