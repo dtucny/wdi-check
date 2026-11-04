@@ -9,6 +9,14 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+### Added
+- **Recovery after the graphics driver resets**, as it does when a graphics driver is installed. WinUI
+  doesn't always draw new text after that: after an AMD driver update with WdiCheck open, "Check again"
+  left most values missing until WdiCheck was restarted. Now a bar says the driver was reset and offers
+  a restart, and until then "Check again" restarts WdiCheck (which scans on start) instead of scanning
+  into the window. Settings are kept.
+- "Check again" has an accessible name, so screen readers announce it.
+
 ### Fixed
 - **"Installed here" says why there's no device** on the board page, instead of "No device found" for
   all of them:
