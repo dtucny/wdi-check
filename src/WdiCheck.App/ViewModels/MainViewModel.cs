@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WdiCheck.Core.Api;
@@ -5,6 +6,7 @@ using WdiCheck.Core.Inventory;
 using WdiCheck.Core.Reporting;
 using WdiCheck.Core.Scanning;
 using WdiCheck.Core.Settings;
+using WdiCheck.Core.Updates;
 using WdiCheck.Core.WindowsUpdate;
 using Windows.Storage.Pickers;
 
@@ -74,7 +76,50 @@ public sealed partial class MainViewModel : ObservableObject
             ShowInboxAndUnmatched = true;
     }
 
+    /// <summary>A newer release the user hasn't dismissed; null otherwise.</summary>
+    [ObservableProperty]
+    public partial AvailableUpdate? Update { get; set; }
+
     public Task LoadAsync() => ScanAsync(revalidate: false);
+
+    /// <summary>
+    /// Run with each scan; the checker asks GitHub at most once a day. <paramref name="force"/> asks now and shows
+    /// a release even if its notice was closed (Settings › Check now). Returns the newer release, if any.
+    /// </summary>
+    public async Task<AvailableUpdate?> CheckForUpdateAsync(bool force = false)
+    {
+        if (!force && !Settings.CheckForUpdates)
+            return null;
+        var current = typeof(MainViewModel).Assembly.GetName().Version ?? new Version(0, 0, 0);
+        var checker = new UpdateChecker(_http, AppSettings.DataDirectory, current);
+        AvailableUpdate? update;
+        try
+        {
+            update = await Task.Run(() => checker.CheckAsync(App.IsPackaged, RuntimeInformation.ProcessArchitecture, force, CancellationToken.None));
+        }
+        catch (Exception ex)
+        {
+            App.LogError("Update check failed", ex);
+            return null;
+        }
+        if (force && update is not null && Settings.DismissedUpdate == update.Version.ToString(3))
+        {
+            Settings.DismissedUpdate = null;
+            TrySaveSettings();
+        }
+        Update = update is not null && Settings.DismissedUpdate != update.Version.ToString(3) ? update : null;
+        return update;
+    }
+
+    /// <summary>The user closed the notice: don't show this release again.</summary>
+    public void DismissUpdate()
+    {
+        if (Update is null)
+            return;
+        Settings.DismissedUpdate = Update.Version.ToString(3);
+        TrySaveSettings();
+        Update = null;
+    }
 
     /// <summary>
     /// Set after a graphics driver reset: the window can't draw new text any more, so "Check again" restarts the
@@ -110,6 +155,7 @@ public sealed partial class MainViewModel : ObservableObject
             View = new SnapshotView(snapshot, _windowsUpdate);
             if (Settings.CheckWindowsUpdate)
                 _ = SearchWindowsUpdateAsync(ct);
+            _ = CheckForUpdateAsync();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

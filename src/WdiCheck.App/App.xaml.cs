@@ -24,6 +24,21 @@ public partial class App : Application
 
     public static MainWindow Window { get; private set; } = null!;
 
+    /// <summary>Installed from the MSIX rather than run from the zip.</summary>
+    public static bool IsPackaged { get; } = GetIsPackaged();
+
+    private static bool GetIsPackaged()
+    {
+        try
+        {
+            return Windows.ApplicationModel.Package.Current is not null;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
     public static string LogPath => Path.Combine(AppSettings.DataDirectory, "error.log");
 
     public static void LogError(string context, Exception ex)

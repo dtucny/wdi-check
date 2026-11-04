@@ -17,6 +17,7 @@ public sealed partial class SettingsPage : Page
         ThemeButtons.SelectedIndex = Math.Max(0, Array.IndexOf(Themes, ViewModel.Settings.Theme));
         BaseUrlBox.Text = ViewModel.Client.BaseUri.AbsoluteUri;
         WindowsUpdateToggle.IsOn = ViewModel.Settings.CheckWindowsUpdate;
+        UpdatesToggle.IsOn = ViewModel.Settings.CheckForUpdates;
         VersionText.Text = $"WdiCheck {typeof(App).Assembly.GetName().Version?.ToString(3)}";
         UpdateCacheText();
         _loading = false;
@@ -39,6 +40,25 @@ public sealed partial class SettingsPage : Page
             return;
         ViewModel.Settings.CheckWindowsUpdate = WindowsUpdateToggle.IsOn;
         ViewModel.TrySaveSettings();
+    }
+
+    private void UpdatesToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading)
+            return;
+        ViewModel.Settings.CheckForUpdates = UpdatesToggle.IsOn;
+        ViewModel.TrySaveSettings();
+    }
+
+    private async void CheckNow_Click(object sender, RoutedEventArgs e)
+    {
+        CheckNowButton.IsEnabled = false;
+        CheckNowText.Text = "Checking…";
+        var update = await ViewModel.CheckForUpdateAsync(force: true);
+        CheckNowText.Text = update is null
+            ? "No newer version found."
+            : $"WdiCheck {update.Version.ToString(3)} is available: see the menu, above Settings.";
+        CheckNowButton.IsEnabled = true;
     }
 
     private void ApplyUrl_Click(object sender, RoutedEventArgs e)

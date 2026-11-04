@@ -9,6 +9,12 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+### Added
+- **New version notice.** Once a day WdiCheck asks GitHub for its latest release; when there is a newer
+  one, a card above Settings in the menu offers the download for this build (zip or MSIX, x64 or ARM64)
+  and the release notes. Closing it hides that version; a later one shows again. Settings › WdiCheck
+  updates turns the check off and has "Check now". Nothing is downloaded or installed by itself.
+
 ## [0.5.0] - 2026-11-04
 
 ### Added

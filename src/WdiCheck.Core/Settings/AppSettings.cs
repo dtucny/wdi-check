@@ -22,6 +22,12 @@ public sealed class AppSettings
     /// <summary>Ask Windows Update which drivers it offers this machine after each scan.</summary>
     public bool CheckWindowsUpdate { get; set; } = true;
 
+    /// <summary>Ask GitHub, at most once a day, whether a newer WdiCheck has been released.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>The release whose notice the user closed ("0.6.0"); it isn't shown again, a later one is.</summary>
+    public string? DismissedUpdate { get; set; }
+
     /// <summary>"Default", "Light" or "Dark".</summary>
     public string Theme { get; set; } = "Default";
 

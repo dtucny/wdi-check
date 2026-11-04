@@ -34,6 +34,8 @@ public sealed partial class MainWindow : Window
         {
             if (e.PropertyName == nameof(App.ViewModel.View))
                 UpdateThisPc();
+            else if (e.PropertyName == nameof(App.ViewModel.Update))
+                ShowUpdate();
         };
 
         _gpuWatcher.Reset += () => DispatcherQueue.TryEnqueue(OnGraphicsReset);
@@ -74,6 +76,49 @@ public sealed partial class MainWindow : Window
             Application.Current.Exit();
         }
     }
+
+    private void ShowUpdate()
+    {
+        if (App.ViewModel.Update is not { } update)
+        {
+            UpdatePanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var version = update.Version.ToString(3);
+        var current = typeof(App).Assembly.GetName().Version?.ToString(3);
+        UpdateSubtitle.Text = $"This: {current}\nNew: {version}";
+        var tip = $"WdiCheck {version} has been released; this is {current}.";
+        ToolTipService.SetToolTip(UpdateCard, tip);
+        ToolTipService.SetToolTip(UpdateIconButton, tip);
+        // No asset for this build (say, an architecture the release doesn't include): the release page has the rest.
+        var label = update.Download is null ? "Open the release" : "Download";
+        UpdateDownloadText.Text = label;
+        UpdateDownloadItem.Text = update.Download is null ? label : $"Download {version}";
+        UpdateNotesLink.Visibility = UpdateNotesItem.Visibility = update.Download is null ? Visibility.Collapsed : Visibility.Visible;
+        UpdatePanel.Visibility = Visibility.Visible;
+        Nav_PaneChanged(Nav, null);
+    }
+
+    /// <summary>The card needs the open pane; compact, the pane has room for an icon only.</summary>
+    private void Nav_PaneChanged(NavigationView sender, object? args)
+    {
+        UpdateCard.Visibility = sender.IsPaneOpen ? Visibility.Visible : Visibility.Collapsed;
+        UpdateIconButton.Visibility = sender.IsPaneOpen ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private async void UpdateDownload_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.ViewModel.Update is { } update)
+            await Windows.System.Launcher.LaunchUriAsync(update.Download ?? update.ReleasePage);
+    }
+
+    private async void UpdateNotes_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.ViewModel.Update is { } update)
+            await Windows.System.Launcher.LaunchUriAsync(update.ReleasePage);
+    }
+
+    private void UpdateDismiss_Click(object sender, RoutedEventArgs e) => App.ViewModel.DismissUpdate();
 
     private const string BoardTag = "board";
     private const string CardTagPrefix = "card:";
