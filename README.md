@@ -136,7 +136,7 @@ src\WdiCheck.App\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\WdiCheck.exe
 ```
 
 Artifact names carry the version from `Directory.Build.props`, for example
-`artifacts/WdiCheck-0.4.0-win-x64.zip` and `artifacts/WdiCheck-0.4.0-win-x64-unsigned.msix`
+`artifacts/WdiCheck-0.5.0-win-x64.zip` and `artifacts/WdiCheck-0.5.0-win-x64-unsigned.msix`
 (the `-unsigned` suffix is dropped when a certificate is given).
 
 Release builds are trimmed and include only the WinUI part of the Windows App SDK, so each
@@ -150,7 +150,7 @@ Windows App SDK are bundled, so it runs by double-clicking `WdiCheck.exe`, with 
 ```powershell
 ./scripts/new-dev-cert.ps1 -Trust          # elevated; creates CN=WdiCheck Dev and trusts it
 ./scripts/build.ps1 -Msix -CertificateThumbprint <thumbprint printed above>
-Add-AppxPackage artifacts\WdiCheck-0.4.0-win-x64.msix
+Add-AppxPackage artifacts\WdiCheck-0.5.0-win-x64.msix
 ./scripts/new-dev-cert.ps1 -Untrust        # when done
 ```
 
@@ -174,8 +174,8 @@ Pushing a version tag makes GitHub Actions build and publish a release
 3. Commit, then tag and push:
 
    ```powershell
-   git tag -a v0.4.0 -m "WdiCheck 0.4.0"
-   git push origin main v0.4.0
+   git tag -a v0.5.0 -m "WdiCheck 0.5.0"
+   git push origin main v0.5.0
    ```
 
 The workflow checks that the tag matches both version numbers, and that the CHANGELOG section
@@ -184,7 +184,7 @@ builds the x64 and ARM64 zips and MSIX packages with `scripts/build.ps1`, and cr
 GitHub release with that version's `CHANGELOG.md` section as its notes
 (`scripts/release-notes.ps1 -Version x.y.z` previews them). To rebuild an existing release,
 run the workflow manually from the Actions tab with the tag. Tags with a suffix
-(`v0.4.0-beta.1`) are published as pre-releases.
+(`v0.5.0-beta.1`) are published as pre-releases.
 
 Release packages are currently **unsigned**. Windows SmartScreen may warn about the zip's exe,
 and the MSIX installs only where its signer is trusted.

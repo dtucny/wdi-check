@@ -9,6 +9,8 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-04
+
 ### Added
 - **Recovery after the graphics driver resets**, as it does when a graphics driver is installed. WinUI
   doesn't always draw new text after that: after an AMD driver update with WdiCheck open, "Check again"
@@ -337,7 +339,8 @@ First release, against WinDriverIndex data schema 1.0.0.
   and an asset generator.
 - `doc/upstream-requests.md`: problems found in WinDriverIndex and requested changes.
 
-[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/dtucny/wdi-check/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/dtucny/wdi-check/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/dtucny/wdi-check/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/dtucny/wdi-check/compare/v0.2.8...v0.3.0
 [0.2.8]: https://github.com/dtucny/wdi-check/compare/v0.2.7...v0.2.8
