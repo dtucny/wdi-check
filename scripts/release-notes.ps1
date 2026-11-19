@@ -28,6 +28,7 @@ for ($i = $start + 1; $i -lt $lines.Count; $i++) {
     $body.Add($lines[$i])
 }
 $notes = ($body -join "`n").Trim()
+$notes += "`n`n---`n[Privacy](https://github.com/dtucny/wdi-check#privacy)"
 if ($OutFile) {
     $target = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutFile)  # relative to the PS location
     [IO.File]::WriteAllText($target, $notes + "`n", (New-Object Text.UTF8Encoding $false))

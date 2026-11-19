@@ -100,6 +100,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="4">
                         <HyperlinkButton Content="WinDriverIndex on GitHub" NavigateUri="https://github.com/dtucny/WinDriverIndex" />
                         <HyperlinkButton Content="Method &amp; findings" NavigateUri="https://github.com/dtucny/WinDriverIndex/blob/main/doc/findings.md" />
+                        <HyperlinkButton Content="Privacy" NavigateUri="https://github.com/dtucny/wdi-check#privacy" />
                     </StackPanel>
                 </StackPanel>
             </Border>

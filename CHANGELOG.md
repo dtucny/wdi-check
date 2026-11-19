@@ -9,6 +9,10 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+### Added
+- A privacy section in the README, linked from Settings › About and from each release's notes:
+  what WdiCheck sends where, and how to turn each optional connection off.
+
 ## [0.6.0] - 2026-11-04
 
 ### Added

@@ -201,6 +201,27 @@ scripts/                   build, release notes, outdated packages, dev certific
 CHANGELOG.md               release notes
 ```
 
+## Privacy
+
+WdiCheck has no accounts, telemetry or analytics. What it reads about this PC (devices, driver
+versions, SMBIOS) stays on this PC unless you export it yourself. It connects to:
+
+- **WinDriverIndex** (`windriverindex.tucny.com`, or the mirror set in Settings › Data source) on
+  each check, to download the index files every copy downloads, and the support listing for the
+  board or graphics card it matched. Those requests show which listing this PC matched; nothing
+  else about the PC is sent.
+- **GitHub** (`api.github.com`) at most once a day, to ask whether a newer WdiCheck has been
+  released. Turn this off in Settings › WdiCheck updates.
+- **Windows Update**, after each check, through Windows' own update service, which contacts
+  Microsoft just as Settings › Windows Update does. Turn this off in Settings › Windows Update.
+
+Each request carries the WdiCheck version (`User-Agent: WdiCheck/<version>`) and, like any web
+request, this PC's IP address. Links you click, such as a vendor's download page, open in your
+browser.
+
+Settings, the downloaded index and an error log are kept in `%LOCALAPPDATA%\WdiCheck`. Uninstalling
+the MSIX removes them; for the zip, delete its folder and that one.
+
 ## Contributing and licence
 
 Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
