@@ -9,6 +9,11 @@ WdiCheck consumes the WinDriverIndex data schema, which is versioned separately
 
 ## [Unreleased]
 
+### Added
+- Privacy and code signing policy sections in the README, linked from Settings › About and from
+  each release's notes: what WdiCheck sends where, and how releases will be signed through
+  SignPath Foundation once it accepts the project.
+
 ## [0.6.0] - 2026-11-04
 
 ### Added
