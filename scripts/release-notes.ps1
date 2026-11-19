@@ -28,8 +28,7 @@ for ($i = $start + 1; $i -lt $lines.Count; $i++) {
     $body.Add($lines[$i])
 }
 $notes = ($body -join "`n").Trim()
-# SignPath Foundation asks for the code signing policy to be linked from the download page.
-$notes += "`n`n---`n[Code signing policy](https://github.com/dtucny/wdi-check#code-signing-policy) · [Privacy](https://github.com/dtucny/wdi-check#privacy)"
+$notes += "`n`n---`n[Privacy](https://github.com/dtucny/wdi-check#privacy)"
 if ($OutFile) {
     $target = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutFile)  # relative to the PS location
     [IO.File]::WriteAllText($target, $notes + "`n", (New-Object Text.UTF8Encoding $false))

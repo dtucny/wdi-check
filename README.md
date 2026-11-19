@@ -222,22 +222,6 @@ browser.
 Settings, the downloaded index and an error log are kept in `%LOCALAPPDATA%\WdiCheck`. Uninstalling
 the MSIX removes them; for the zip, delete its folder and that one.
 
-## Code signing policy
-
-WdiCheck's releases are not signed yet. Signing through SignPath Foundation's free code signing
-for open-source projects is planned; until SignPath accepts the project, releases are unsigned.
-
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
-[SignPath Foundation](https://signpath.org/).
-
-- Committers and reviewers: [D. Tucny](https://github.com/dtucny)
-- Approvers: [D. Tucny](https://github.com/dtucny)
-
-Only builds made by this repository's [release workflow](.github/workflows/release.yml) from a
-version tag are signed, and each signing request is approved by hand. Changes from anyone else,
-including Dependabot's dependency updates, come in as pull requests and are reviewed before they
-are merged. See also [Privacy](#privacy).
-
 ## Contributing and licence
 
 Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
