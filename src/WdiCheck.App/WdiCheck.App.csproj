@@ -46,7 +46,7 @@
   <ItemGroup>
     <!-- Only the WinUI component (and what it depends on): the Microsoft.WindowsAppSDK metapackage also ships
          AI/ML (ONNX Runtime, DirectML), Search and Widgets, ~45 MB WdiCheck never uses. -->
-    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.4" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.7.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
